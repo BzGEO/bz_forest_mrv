@@ -1,0 +1,114 @@
+// Display reference land cover data from Google's Dynamic World (DW) products
+// More info: https://developers.google.com/earth-engine/datasets/catalog/GOOGLE_DYNAMICWORLD_V1
+// Questions? eac0021@uah.edu / emil.cherrington@nasa.gov
+// Last updated: 31 July 2024
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Load packages
+var a = require('users/bzgeo/examples:_ancillary/mes'); // This pulls in additional spatial data
+var legend = require('users/brookwilliams/utils:apps/legend'); // This pulls B. Williams' legend code
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Establish regions of interest (ROIs)
+var roi = ee.Geometry.Polygon([[[-87.68, 19.289437],[-87.68, 15.585054],[-89.991352, 15.585054],[-89.991352, 19.289437]]]); // BZ bounding box ROI
+var roi2 = ee.FeatureCollection("users/servirbz/aoi/lac/cam/bz/bz_bounds_swbd00"); // Belize shapefile ROI
+
+// Load land mask
+var msk = ee.Image('UMD/hansen/global_forest_change_2015').select('datamask').eq(1); // From Hansen et al.
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Load various DW functions
+
+// Probability Bands to Class ID borrowed from Google ('projects/dynamicworld/default:modules/inference')
+var probabilityBandsToClassId = function(probability_bands) {
+  return probability_bands.toArray().arrayArgmax().arrayGet([0])};
+
+// Load / compile data | Load DW collections
+var dw_prob = ee.Image(ee.ImageCollection('GOOGLE/DYNAMICWORLD/V1')
+                        .select(["water","trees","grass","flooded_vegetation","crops","shrub_and_scrub","built","bare","snow_and_ice"])
+                        .filterDate("2024-01-01T00:00","2024-05-31T23:59")
+                        .mosaic()).updateMask(msk); // DW global data as probabilities
+
+var dw_lc = probabilityBandsToClassId(dw_prob).clip(roi);
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Visualizations
+
+// Class ID visualization borrowed from Google ('projects/dynamicworld/default:modules/inference')
+var viz_lc = {min: 0, max: 8,
+palette: ["419BDF","397D49","88B053","7A87C6","E49635","DFC35A","C4281B","A59B8F","B39FE1"]};
+
+var viz_fc = {min: 0, max: 2, palette:['lightskyblue','green','salmon']};
+
+// DW class names
+var classes = [["water","trees","grass","flooded_vegetation","crops","scrub_shrub","builtup","bare_ground","snow_ice"]];
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Reclass DW LC data to forest cover maps
+var dw_fc = dw_lc.remap([0,1,2,3,4,5,6,7,8],[0,1,2,2,2,2,2,2,2]).select(['remapped'],['fcover']);
+var dw_urban = dw_lc.remap([0,1,2,3,4,5,6,7,8],[0,2,2,2,2,2,1,2,2]).select(['remapped'],['urban']);
+var dw_msk = dw_lc.remap([0,1,2,3,4,5,6,7,8],[0,1,1,1,1,1,1,1,1]).select(['remapped'],['land_msk']);
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Estimate forest area and % forest cover
+
+function fstat(img,res,aoi,year) {
+
+// Extract area for use in % forest cover calculations below
+var area_bz = ee.Number(ee.FeatureCollection(roi2).geometry().area().divide(1000000)); // Area of Belize = 22,230 km2
+
+// Extract forest area
+var f_stat = ee.Number(img.clip(aoi).select('fcover').eq(1).multiply(ee.Image.pixelArea()).reduceRegion({
+  geometry: aoi.geometry(), reducer: ee.Reducer.sum(), scale: res, maxPixels: 1e18}).get('fcover')).divide(1000000);
+
+// Extract non-forest area
+var nf_stat = ee.Number(img.clip(aoi).select('fcover').neq(1).multiply(ee.Image.pixelArea()).reduceRegion({
+  geometry: aoi.geometry(), reducer: ee.Reducer.sum(), scale: res, maxPixels: 1e18}).get('fcover')).divide(1000000);
+
+// Select which statistics are printed out
+print('Year: ', year);
+print('est. forest area: ', f_stat, 'sq. km');
+print('est. % forest cover: ', f_stat.divide(area_bz).multiply(100),'percent');
+//print('est. % non-forest cover: ', nf_stat.divide(roi).multiply(100),'percent');
+}
+ 
+// Apply function to estaimate forest cover (but at 100m spatial resolution)
+fstat(dw_fc.reproject({crs: 'EPSG: 32616',scale: 100})
+                   .reduceResolution({reducer: ee.Reducer.median(),maxPixels:10000,bestEffort: true}),
+                   100, roi2, 2024);
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Add data to map viewer
+Map.centerObject(roi,9); // Centers the data on Belize, at zoom level 9
+
+Map.add(legend.build(classes[0],viz_lc['palette'])); // Adds the legend to the map
+
+// Load various DW datasets
+Map.addLayer(dw_prob, {}, 'Dynamic World Probabilities', 0);
+Map.addLayer(dw_lc, viz_lc, 'Land Cover (Dynamic World)', 1);
+Map.addLayer(dw_fc, viz_fc,'Forest Cover (Dynamic World)', 0);
+
+// Load ancillary reference datasets
+Map.addLayer(a.bz_ws_ln.clip(roi),{palette: "blue"},"Watersheds (mainland)", 0);
+Map.addLayer(a.pa_bz_ln2,{palette: "yellow"},"Prot. areas", 1);
+Map.addLayer(a.bnds_intl_ln2.clip(roi),{palette: "black"},"Int'l boundaries", 1);
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+Export.image.toAsset({image: dw_fc.clip(roi), description: 'export_ee_dw',
+assetId: 'projects/bz-sdg/x_tmp/bz_fc_dw_202401_202404_010m', scale: 10, region: roi, maxPixels: 1800000000});
+
+Export.image.toAsset({image: dw_fc.clip(roi), description: 'export_ee_dw',
+assetId: 'projects/bz-sdg/x_tmp/bz_fc_dw_202401_202404_030m', scale: 30, region: roi, maxPixels: 1800000000});
+
+Export.image.toAsset({image: dw_msk.clip(roi), description: 'export_ee_dw',
+assetId: 'projects/bz-sdg/x_tmp/bz_land_msk_dw_202401_202404_030m', scale: 30, region: roi, maxPixels: 1800000000});
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////

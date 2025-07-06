@@ -1,0 +1,177 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var aoi1 = 
+    /* color: #d63000 */
+    /* shown: false */
+    ee.Geometry.Polygon(
+        [[[-87.7, 18.6],
+          [-87.7, 15.73],
+          [-89.3, 15.73],
+          [-89.3, 18.6]]]);
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+// Last updated: 12.11.2024
+
+var a = require('users/bzgeo/examples:_ancillary/mes');
+var b = require('users/servirbz/packages:sma_std3');
+var c = require('users/servirbz/packages:img_list_landsat_sma_fc__bz');
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
+var img_raw = c.img_raw;
+var img_sma = c.img_sma;
+var img_for = c.img_for2;
+
+//print(img_raw[1984])
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+var fc_1984 = b.for_sma_60(b.sma_(img_raw[1984]))
+                    .reproject({crs: 'EPSG: 32616',scale: 30})
+                    .reduceResolution({reducer: ee.Reducer.mode(),maxPixels:10000,bestEffort: true});
+
+var fc_2010 = b.for_sma_60(b.sma_(img_raw[2010]))
+                    .reproject({crs: 'EPSG: 32616',scale: 30})
+                    .reduceResolution({reducer: ee.Reducer.mode(),maxPixels:10000,bestEffort: true});
+
+var fc_2024 = b.for_sma_60(b.sma_(img_raw[2024]))
+                    .reproject({crs: 'EPSG: 32616',scale: 30})
+                    .reduceResolution({reducer: ee.Reducer.mode(),maxPixels:10000,bestEffort: true});
+
+var fc_2010_msk = fc_2010.updateMask(fc_2010.eq(1));
+var fc_1984_msk = fc_1984.updateMask(fc_1984.eq(1));
+
+
+var lcc_lt = c.lt_030m.clip(aoi1).updateMask(fc_1984_msk);
+//var lcc_lt = c.lt_030m.clip(aoi1).updateMask(fc_2010_msk);
+var lcc_lt_ = lcc_lt.updateMask(lcc_lt.gte(2013));
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Estimate forest and non-forest areas
+
+function stat_area(img,place,roi,year) {
+
+var f_stat = ee.Number(img.clip(roi).select('constant').eq(1).multiply(ee.Image.pixelArea()).reduceRegion({
+  geometry: ee.FeatureCollection(roi).geometry(), reducer: ee.Reducer.sum(), scale: 30, maxPixels: 1e18}).get('constant')).divide(10000);
+
+var nf_stat = ee.Number(img.clip(roi).select('constant').eq(0).multiply(ee.Image.pixelArea()).reduceRegion({
+  geometry: ee.FeatureCollection(roi).geometry(), reducer: ee.Reducer.sum(), scale: 30, maxPixels: 1e18}).get('constant')).divide(10000);
+
+print('est. forest area '+year, place, f_stat, 'hectares');
+print('est. non-forest area '+year, place, nf_stat, 'hectares');
+}
+
+
+// Annual land cover change using LT results
+
+function lcc_area(img,roi) {
+
+var region = {geometry: ee.FeatureCollection(roi).geometry(), reducer: ee.Reducer.sum(),
+        scale: 30, maxPixels: 1e18}
+
+var y_2012 = ee.Number(img.clip(roi).select('yod').eq(2012)
+      .multiply(ee.Image.pixelArea()).reduceRegion(region).get('yod')).divide(10000);
+
+var y_2013 = ee.Number(img.clip(roi).select('yod').eq(2013)
+      .multiply(ee.Image.pixelArea()).reduceRegion(region).get('yod')).divide(10000);
+
+var y_2014 = ee.Number(img.clip(roi).select('yod').eq(2014)
+      .multiply(ee.Image.pixelArea()).reduceRegion(region).get('yod')).divide(10000);
+
+var y_2015 = ee.Number(img.clip(roi).select('yod').eq(2015)
+      .multiply(ee.Image.pixelArea()).reduceRegion(region).get('yod')).divide(10000);
+
+var y_2016 = ee.Number(img.clip(roi).select('yod').eq(2016)
+      .multiply(ee.Image.pixelArea()).reduceRegion(region).get('yod')).divide(10000);
+
+var y_2017 = ee.Number(img.clip(roi).select('yod').eq(2017)
+      .multiply(ee.Image.pixelArea()).reduceRegion(region).get('yod')).divide(10000);
+
+var y_2018 = ee.Number(img.clip(roi).select('yod').eq(2018)
+      .multiply(ee.Image.pixelArea()).reduceRegion(region).get('yod')).divide(10000);
+
+var y_2019 = ee.Number(img.clip(roi).select('yod').eq(2019)
+      .multiply(ee.Image.pixelArea()).reduceRegion(region).get('yod')).divide(10000);
+
+var y_2020 = ee.Number(img.clip(roi).select('yod').eq(2020)
+      .multiply(ee.Image.pixelArea()).reduceRegion(region).get('yod')).divide(10000);
+
+var y_2021 = ee.Number(img.clip(roi).select('yod').eq(2021)
+      .multiply(ee.Image.pixelArea()).reduceRegion(region).get('yod')).divide(10000);
+
+var y_2022 = ee.Number(img.clip(roi).select('yod').eq(2022)
+      .multiply(ee.Image.pixelArea()).reduceRegion(region).get('yod')).divide(10000);
+
+var y_2023 = ee.Number(img.clip(roi).select('yod').eq(2023)
+      .multiply(ee.Image.pixelArea()).reduceRegion(region).get('yod')).divide(10000);
+
+var y_2024 = ee.Number(img.clip(roi).select('yod').eq(2024)
+      .multiply(ee.Image.pixelArea()).reduceRegion(region).get('yod')).divide(10000);
+
+print('change in 2012', y_2012, 'hectares');
+print('change in 2013', y_2013, 'hectares');
+print('change in 2014', y_2014, 'hectares');
+print('change in 2015', y_2015, 'hectares');
+print('change in 2016', y_2016, 'hectares');
+print('change in 2017', y_2017, 'hectares');
+print('change in 2018', y_2018, 'hectares');
+print('change in 2019', y_2019, 'hectares');
+print('change in 2020', y_2020, 'hectares');
+print('change in 2021', y_2021, 'hectares');
+print('change in 2022', y_2022, 'hectares');
+print('change in 2023', y_2023, 'hectares');
+print('change in 2024', y_2024, 'hectares');
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Total area of Manatee Forest Reserve
+print("Manatee Forest Reserve");
+print("total area in hectares:");
+print(ee.Number(ee.FeatureCollection(aoi1).geometry().area().divide(10000)));
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+// Forest area in Manatee Forest Reserve
+stat_area(fc_2010, "Manatee FR (full)", aoi1, 2010);
+stat_area(fc_2024, "Manatee FR (full)", aoi1, 2024);
+//stat_area(fc_2024, "Manatee FR (clipped)", aoi2, 2024);
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Print forest disturbance areas extracted using LandTrendr
+// lcc_area(lcc_lt, aoi1);
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+var pal_lt = {min: 1984, max: 2024, palette: ['#9400D3', '#4B0082', '#0000FF', '#00FF00', '#FFFF00', '#FF7F00', '#FF0000']};
+
+
+var legend = ui.Panel({style: {position: 'bottom-left',padding: '8px 8px'}});
+var legendTitle = ui.Label({value: 'Year disturbed',style: {fontWeight: 'bold',fontSize: '14px',margin: '0 0 0 0',padding: '0'}}); // margin: '0 0 4px 0'
+legend.add(legendTitle);
+var lon = ee.Image.pixelLonLat().select('latitude');
+var gradient = lon.multiply((pal_lt.max-pal_lt.min)/100.0).add(pal_lt.min);
+var legendImage = gradient.visualize(pal_lt);
+var panel = ui.Panel({widgets: [ui.Label(pal_lt['max'])],});
+legend.add(panel);
+var thumbnail = ui.Thumbnail({image: legendImage,params: {bbox:'0,0,10,100', dimensions:'10x200'},style: {padding: '1px', position: 'bottom-center'}});
+legend.add(thumbnail);
+var panel = ui.Panel({widgets: [ui.Label(pal_lt['min'])],});
+legend.add(panel);
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+Map.setCenter(-88.4695, 17.1866, 10); // focus to zoom level 8
+Map.add(legend);
+Map.addLayer(fc_1984, {min:0,max:1,palette:['salmon','green']}, "Forest_cover_1984", 1);
+Map.addLayer(fc_2010, {min:0,max:1,palette:['salmon','green']}, "Forest_cover_2010", 0);
+Map.addLayer(fc_2024, {min:0,max:1,palette:['salmon','green']}, "Forest_cover_2024", 0);
+//Map.addLayer(lcc_lt_,pal_lt,"Land Cover Change: 2012-2024 (LandTrendr)", 1);
+Map.addLayer(lcc_lt,pal_lt,"Land Cover Change: 1984-2024 (LandTrendr)", 1);
+Map.addLayer(a.ln(aoi1,1),{palette: "white"},'AOI',1);
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

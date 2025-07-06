@@ -1,0 +1,138 @@
+// Last updated: 24.07.2024
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+var a = require('users/bzgeo/examples:_ancillary/mes');
+var b = require('users/servirbz/packages:temporal_reduction');
+
+var roi = ee.Geometry.Rectangle(-76.1, 6.5, -92.5, 21.65); // Mesoamerica
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// MODIS burn scar visualization
+var viz = {min: 1, max: 150, palette: ['red']};
+var viz1 = {min: 1, max: 31, palette: ['red']};
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+var coll = {
+  "dat":[
+  '2003-01-01','2004-01-01',
+  '2005-01-01','2006-01-01','2007-01-01','2008-01-01','2009-01-01',
+  '2010-01-01','2011-01-01','2012-01-01','2013-01-01','2014-01-01',
+  '2015-01-01','2016-01-01','2017-01-01','2018-01-01','2019-01-01',
+  '2020-01-01','2021-01-01','2022-01-01','2023-01-01','2024-01-01'],
+  
+  "dat2": [
+  '2003','2004','2005','2006','2007','2008','2009',
+  '2010','2011','2012','2013','2014','2015','2016','2017','2018','2019',
+  '2020','2021','2022','2023','2024']};
+
+var dx = coll.dat;
+var dx2 = coll.dat2;
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+function burn_scar(dat){return ee.ImageCollection('MODIS/061/MCD64A1').select('BurnDate')
+                  .filter(ee.Filter.date(ee.Date(dat), ee.Date(dat).advance(6, 'month')))
+                  .median().clip(roi)}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+var mcd64a1 = ee.ImageCollection('MODIS/061/MCD64A1').select('BurnDate')
+              .filterDate('2003-01-01','2024-05-31')
+              .filter(ee.Filter.calendarRange(1, 5, 'month'))
+              .map(function(img) {return img.remap(b.from,b.to).select(['remapped'],['burned_area'])})
+              .filterBounds(a.mes);
+
+var mcd64a1_mt = b.temp_red_yr_x(mcd64a1, 2003, 2024, 1, 151);
+
+/*
+temp_red_yr_x(coll, y1, y2, d1, d2)
+var countries = a.mes.merge(a.bz_bnds).merge(a.gt_).merge(a.sv).merge(a.hn).merge(a.ni).merge(a.cr).merge(a.pn);
+print(countries);
+*/
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Generate a time series with the burn scar areas for Mesoamerica
+print(ui.Chart.image.series(mcd64a1_mt, a.mes, ee.Reducer.sum(), 1000)
+.setOptions({title: "MODIS-derived burn scar areas, 2003-2024: Mesoamerica"
+,vAxis:{title:'Area (km2)'},
+pointSize:5,series:{0:{color:'red'}}}));
+
+// Generate a time series with the burn scar areas for Belize
+print(ui.Chart.image.series(mcd64a1_mt, a.bz_bnds, ee.Reducer.sum(), 1000)
+.setOptions({title: "MODIS-derived burn scar areas, 2003-2024: Belize"
+,vAxis:{title:'Area (km2)'},
+pointSize:5,series:{0:{color:'red'}}}));
+
+// Generate a time series with the burn scar areas for Guatemala
+print(ui.Chart.image.series(mcd64a1_mt, a.gt_, ee.Reducer.sum(), 1000)
+.setOptions({title: "MODIS-derived burn scar areas, 2003-2024: Guatemala"
+,vAxis:{title:'Area (km2)'},
+pointSize:5,series:{0:{color:'red'}}}));
+
+// Generate a time series with the burn scar areas for El Salvador
+print(ui.Chart.image.series(mcd64a1_mt, a.sv, ee.Reducer.sum(), 1000)
+.setOptions({title: "MODIS-derived burn scar areas, 2003-2024: El Salvador"
+,vAxis:{title:'Area (km2)'},
+pointSize:5,series:{0:{color:'red'}}}));
+
+// Generate a time series with the burn scar areas for Honduras
+print(ui.Chart.image.series(mcd64a1_mt, a.hn, ee.Reducer.sum(), 1000)
+.setOptions({title: "MODIS-derived burn scar areas, 2003-2024: Honduras"
+,vAxis:{title:'Area (km2)'},
+pointSize:5,series:{0:{color:'red'}}}));
+
+// Generate a time series with the burn scar areas for Nicaragua
+print(ui.Chart.image.series(mcd64a1_mt, a.ni, ee.Reducer.sum(), 1000)
+.setOptions({title: "MODIS-derived burn scar areas, 2003-2024: Niacaragua"
+,vAxis:{title:'Area (km2)'},
+pointSize:5,series:{0:{color:'red'}}}));
+
+// Generate a time series with the burn scar areas for Costa Rica
+print(ui.Chart.image.series(mcd64a1_mt, a.cr, ee.Reducer.sum(), 1000)
+.setOptions({title: "MODIS-derived burn scar areas, 2003-2024: Costa Rica"
+,vAxis:{title:'Area (km2)'},
+pointSize:5,series:{0:{color:'red'}}}));
+
+// Generate a time series with the burn scar areas for Panama
+print(ui.Chart.image.series(mcd64a1_mt, a.pn, ee.Reducer.sum(), 1000)
+.setOptions({title: "MODIS-derived burn scar areas, 2003-2024: Panama"
+,vAxis:{title:'Area (km2)'},
+pointSize:5,series:{0:{color:'red'}}}));
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+Map.addLayer(burn_scar(dx[0]).clip(a.mes), viz,'Burn scars '+dx2[0], 0);
+Map.addLayer(burn_scar(dx[1]).clip(a.mes), viz,'Burn scars '+dx2[1], 0);
+Map.addLayer(burn_scar(dx[2]).clip(a.mes), viz,'Burn scars '+dx2[2], 0);
+Map.addLayer(burn_scar(dx[3]).clip(a.mes), viz,'Burn scars '+dx2[3], 0);
+Map.addLayer(burn_scar(dx[4]).clip(a.mes), viz,'Burn scars '+dx2[4], 0);
+Map.addLayer(burn_scar(dx[5]).clip(a.mes), viz,'Burn scars '+dx2[5], 0);
+Map.addLayer(burn_scar(dx[6]).clip(a.mes), viz,'Burn scars '+dx2[6], 0);
+Map.addLayer(burn_scar(dx[7]).clip(a.mes), viz,'Burn scars '+dx2[7], 0);
+Map.addLayer(burn_scar(dx[8]).clip(a.mes), viz,'Burn scars '+dx2[8], 0);
+Map.addLayer(burn_scar(dx[9]).clip(a.mes), viz,'Burn scars '+dx2[9], 0);
+Map.addLayer(burn_scar(dx[10]).clip(a.mes), viz,'Burn scars '+dx2[10], 0);
+Map.addLayer(burn_scar(dx[11]).clip(a.mes), viz,'Burn scars '+dx2[11], 0);
+Map.addLayer(burn_scar(dx[12]).clip(a.mes), viz,'Burn scars '+dx2[12], 0);
+Map.addLayer(burn_scar(dx[13]).clip(a.mes), viz,'Burn scars '+dx2[13], 0);
+Map.addLayer(burn_scar(dx[14]).clip(a.mes), viz,'Burn scars '+dx2[14], 0);
+Map.addLayer(burn_scar(dx[15]).clip(a.mes), viz,'Burn scars '+dx2[15], 0);
+Map.addLayer(burn_scar(dx[16]).clip(a.mes), viz,'Burn scars '+dx2[16], 0);
+Map.addLayer(burn_scar(dx[17]).clip(a.mes), viz,'Burn scars '+dx2[17], 0);
+Map.addLayer(burn_scar(dx[18]).clip(a.mes), viz,'Burn scars '+dx2[18], 0);
+Map.addLayer(burn_scar(dx[19]).clip(a.mes), viz,'Burn scars '+dx2[19], 0);
+Map.addLayer(burn_scar(dx[20]).clip(a.mes), viz,'Burn scars '+dx2[20], 0);
+Map.addLayer(burn_scar(dx[21]).clip(a.mes), viz,'Burn scars '+dx2[21], 1);
+
+/////
+Map.addLayer(a.ln(a.mes,1), {palette: "white"}, "AOI", 1);
+Map.addLayer(a.bnds_intl_cam_ln2, {palette: "white"},"Int'l boundaries", 1);
+/////
+Map.centerObject(roi, 6);
+Map.setOptions('SATELLITE');
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////

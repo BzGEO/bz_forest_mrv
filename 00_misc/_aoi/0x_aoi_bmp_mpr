@@ -1,0 +1,16 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var bz_bmp_mpr = /* color: #ff1806 */ee.Geometry.Polygon(
+        [[[-89.05862015218591, 17.278416007090847],
+          [-89.05862015218591, 16.845176431155156],
+          [-88.73109024495935, 16.845176431155156],
+          [-88.73109024495935, 17.278416007090847]]], null, false);
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+
+var aoi = bz_bmp_mpr; 
+
+Map.addLayer(aoi, {}, "AOI");
+Map.centerObject(aoi);
+
+var aoi_fc = ee.FeatureCollection(aoi);
+
+Export.table.toAsset({collection: aoi_fc, description: "bz_bmp_mpr",  assetId: "bz_bmp_mpr"});

@@ -1,0 +1,31 @@
+////////////////////////////////////////////////////////////////////////////////////////////////
+ 
+// This script (i) counts the # of images available over a point, and (ii) indicates the last image's date
+// Last update: 03.06.2025
+
+////////////////////////////////////////////////////////////////////////////////////////////////
+
+var point = ee.Geometry.Point([-88.201, 17.5018]);
+var pt = point.buffer(250); // <- ** SPECIFY LOCATION HERE **
+
+////////////////////////////////////////////////////////////////////////////////////////////////
+
+var r = require('users/servirbz/packages:img_recent'); // imports the img_recent package
+
+////////////////////////////////////////////////////////////////////////////////////////////////
+
+// counts imagery and displays date of most recent acquisition for the following datasets
+
+r.most_recent("Landsat-8 L2", r.l8_1, pt);
+r.most_recent("Landsat-8 RT", r.l8_0, pt);
+r.most_recent("Landsat-9 L2", r.l9_1, pt);
+
+////////////////////////////////////////////////////////////////////////////////////
+
+// For reference, display the point for which imagery is being queried
+
+Map.addLayer(pt, {color: 'green'},'Belize City, BELIZE', true); // display point over Belize City
+Map.centerObject(pt, 13); // zooms to level 12
+Map.setOptions('SATELLITE');
+
+/////////////////////////////////////// END /////////////////////////////////////////

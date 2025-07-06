@@ -1,0 +1,1 @@
+var ps_2023_04 = ee.Image('projects/bz-sdg/compil_imagery/optical/planet/bz_planetscope_2023_06');

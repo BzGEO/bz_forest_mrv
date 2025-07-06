@@ -1,0 +1,269 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var img1 = ee.Image("projects/bz-sdg/compil_imagery/optical/landsat_ft/mes_landsat_boa_fitted_r70_2024_0628_100m_2");
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+// Extract forest cover data for Belize for 2023 using Supervised Machine Learning
+// Orig.: https://code.earthengine.google.com/?scriptPath=users%2Fbzgeo%2Fbz_lcc%3A2d_classif_2023%2Fbz_l9_s2_mod_20230608e_classif_rf_comparison
+// Questions? Contact eac0021@uah.edu or emil.cherrington@nasa.gov
+// Last updated: 11 Oct. 2024
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Load required packages
+var a = require('users/servirbz/bz_mrv:x_workshop_202409/01_training_data_2023'); // loads training data for classifications
+var b = require('users/bzgeo/examples:_ancillary/mes'); // Loads various ancillary datasets
+var c = require('users/servirbz/packages:img_list_landsat_sma_fc__bz'); // Loads LandTrendr-generated mosaics of BZ from 1984-2024
+var d = require('users/brookwilliams/utils:apps/legend'); // This pulls B. Williams' legend code
+var e = require('users/servirbz/packages:sma_std3');
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Establish regions of interest (ROIs)
+var roi = ee.Geometry.Rectangle(-76.1, 6.5, -92.5, 21.65); // Mesoamerica
+//var img1, a.viz, = ee.FeatureCollection("users/servirbz/aoi/lac/cam/bz/bz_bounds_swbd00"); // Belize shapefile ROI
+
+// Load land mask
+var msk = ee.Image('UMD/hansen/global_forest_change_2015').select('datamask').eq(1); // From Hansen et al.
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// 'Original' band names (L9, S2 band names have been adjusted to corresponding Landsat-7 band names)
+var fro_l9_s2 =  ['B1','B2','B3','B4','B5','B7']; // Blue, Green, Red, NIR, SWIR1, SWIR2
+var fro_mcd = ['b1','b2','b3','b4','b6','b7']; // Blue, Green, Red, NIR, SWIR1, SWIR2
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Load Landsat-9 data from June 2023
+
+var img_2024 = ee.Image.cat([img1, e.sma4(img1)]);
+
+// The L9 data resampled to 100m are used in the supervised classification to generate 1 ha. scale data (and speed up calculations)
+
+var l9_100m_1 = img_2024;
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Implement supervised classifications
+
+// Using first version of the training data
+var cl_2023_1_l9_a = l9_100m_1.classify(ee.Classifier.smileCart()
+                            .train({features:l9_100m_1
+                            .sampleRegions({collection:a.training_2023a,properties:['class'],scale:100}),classProperty:'class',}));
+          
+var cl_2023_1_l9_b = l9_100m_1.classify(ee.Classifier.smileGradientTreeBoost(20)
+                            .train({features:l9_100m_1
+                            .sampleRegions({collection:a.training_2023a,properties:['class'],scale:100}),classProperty:'class',}));
+                            
+var cl_2023_1_l9_c = l9_100m_1.classify(ee.Classifier.minimumDistance('euclidean')
+                            .train({features:l9_100m_1
+                            .sampleRegions({collection:a.training_2023a,properties:['class'],scale:100}),classProperty:'class',}));
+                            
+var cl_2023_1_l9_d = l9_100m_1.classify(ee.Classifier.minimumDistance('cosine')
+                            .train({features:l9_100m_1
+                            .sampleRegions({collection:a.training_2023a,properties:['class'],scale:100}),classProperty:'class',}));
+                            
+var cl_2023_1_l9_e = l9_100m_1.classify(ee.Classifier.minimumDistance('mahalanobis')
+                            .train({features:l9_100m_1
+                            .sampleRegions({collection:a.training_2023a,properties:['class'],scale:100}),classProperty:'class',}));
+                            
+var cl_2023_1_l9_f = l9_100m_1.classify(ee.Classifier.minimumDistance('manhattan')
+                            .train({features:l9_100m_1
+                            .sampleRegions({collection:a.training_2023a,properties:['class'],scale:100}),classProperty:'class',}));
+                            
+var cl_2023_1_l9_g = l9_100m_1.classify(ee.Classifier.libsvm()
+                            .train({features:l9_100m_1
+                            .sampleRegions({collection:a.training_2023a,properties:['class'],scale:100}),classProperty:'class',}));
+                            
+var cl_2023_1_l9_h = l9_100m_1.classify(ee.Classifier.smileNaiveBayes()
+                            .train({features:l9_100m_1
+                            .sampleRegions({collection:a.training_2023a,properties:['class'],scale:100}),classProperty:'class',}));
+                            
+var cl_2023_1_l9_i = l9_100m_1.classify(ee.Classifier.smileRandomForest(200)
+                            .train({features:l9_100m_1
+                            .sampleRegions({collection:a.training_2023a,properties:['class'],scale:100}),classProperty:'class',}));
+
+// Using second version of the training data
+var cl_2023_2_l9_a = l9_100m_1.classify(ee.Classifier.smileCart()
+                            .train({features:l9_100m_1
+                            .sampleRegions({collection:a.training_2023b,properties:['class'],scale:100}),classProperty:'class',}));
+          
+var cl_2023_2_l9_b = l9_100m_1.classify(ee.Classifier.smileGradientTreeBoost(20)
+                            .train({features:l9_100m_1
+                            .sampleRegions({collection:a.training_2023b,properties:['class'],scale:100}),classProperty:'class',}));
+                            
+var cl_2023_2_l9_c = l9_100m_1.classify(ee.Classifier.minimumDistance('euclidean')
+                            .train({features:l9_100m_1
+                            .sampleRegions({collection:a.training_2023b,properties:['class'],scale:100}),classProperty:'class',}));
+                            
+var cl_2023_2_l9_d = l9_100m_1.classify(ee.Classifier.minimumDistance('cosine')
+                            .train({features:l9_100m_1
+                            .sampleRegions({collection:a.training_2023b,properties:['class'],scale:100}),classProperty:'class',}));
+                            
+var cl_2023_2_l9_e = l9_100m_1.classify(ee.Classifier.minimumDistance('mahalanobis')
+                            .train({features:l9_100m_1
+                            .sampleRegions({collection:a.training_2023b,properties:['class'],scale:100}),classProperty:'class',}));
+                            
+var cl_2023_2_l9_f = l9_100m_1.classify(ee.Classifier.minimumDistance('manhattan')
+                            .train({features:l9_100m_1
+                            .sampleRegions({collection:a.training_2023b,properties:['class'],scale:100}),classProperty:'class',}));
+                            
+var cl_2023_2_l9_g = l9_100m_1.classify(ee.Classifier.libsvm()
+                            .train({features:l9_100m_1
+                            .sampleRegions({collection:a.training_2023b,properties:['class'],scale:100}),classProperty:'class',}));
+                            
+var cl_2023_2_l9_h = l9_100m_1.classify(ee.Classifier.smileNaiveBayes()
+                            .train({features:l9_100m_1
+                            .sampleRegions({collection:a.training_2023b,properties:['class'],scale:100}),classProperty:'class',}));
+                            
+var cl_2023_2_l9_i = l9_100m_1.classify(ee.Classifier.smileRandomForest(200)
+                            .train({features:l9_100m_1
+                            .sampleRegions({collection:a.training_2023b,properties:['class'],scale:100}),classProperty:'class',}));
+
+// Using third version of the training data
+var cl_2023_3_l9_a = l9_100m_1.classify(ee.Classifier.smileCart()
+                            .train({features:l9_100m_1
+                            .sampleRegions({collection:a.training_2023c,properties:['class'],scale:100}),classProperty:'class',}));
+          
+var cl_2023_3_l9_b = l9_100m_1.classify(ee.Classifier.smileGradientTreeBoost(20)
+                            .train({features:l9_100m_1
+                            .sampleRegions({collection:a.training_2023c,properties:['class'],scale:100}),classProperty:'class',}));
+                            
+var cl_2023_3_l9_c = l9_100m_1.classify(ee.Classifier.minimumDistance('euclidean')
+                            .train({features:l9_100m_1
+                            .sampleRegions({collection:a.training_2023c,properties:['class'],scale:100}),classProperty:'class',}));
+                            
+var cl_2023_3_l9_d = l9_100m_1.classify(ee.Classifier.minimumDistance('cosine')
+                            .train({features:l9_100m_1
+                            .sampleRegions({collection:a.training_2023c,properties:['class'],scale:100}),classProperty:'class',}));
+                            
+var cl_2023_3_l9_e = l9_100m_1.classify(ee.Classifier.minimumDistance('mahalanobis')
+                            .train({features:l9_100m_1
+                            .sampleRegions({collection:a.training_2023c,properties:['class'],scale:100}),classProperty:'class',}));
+                            
+var cl_2023_3_l9_f = l9_100m_1.classify(ee.Classifier.minimumDistance('manhattan')
+                            .train({features:l9_100m_1
+                            .sampleRegions({collection:a.training_2023c,properties:['class'],scale:100}),classProperty:'class',}));
+                            
+var cl_2023_3_l9_g = l9_100m_1.classify(ee.Classifier.libsvm()
+                            .train({features:l9_100m_1
+                            .sampleRegions({collection:a.training_2023c,properties:['class'],scale:100}),classProperty:'class',}));
+                            
+var cl_2023_3_l9_h = l9_100m_1.classify(ee.Classifier.smileNaiveBayes()
+                            .train({features:l9_100m_1
+                            .sampleRegions({collection:a.training_2023c,properties:['class'],scale:100}),classProperty:'class',}));
+                            
+var cl_2023_3_l9_i = l9_100m_1.classify(ee.Classifier.smileRandomForest(200)
+                            .train({features:l9_100m_1
+                            .sampleRegions({collection:a.training_2023c,properties:['class'],scale:100}),classProperty:'class',}));
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Define colors to be used for the display of the spectral signatures
+//var classes = {0:{color:"green"},1:{color:"yellow"},2:{color:"moccasin"},3:{color:"aqua"},4:{color:"red"},5:{color:"gray"}};
+
+var classes = {0: {color: "green"}, 1: {color: "green"}, 2: {color: "green"},
+            3: {color: "moccasin"}, 4: {color: "moccasin"}, 5: {color: "moccasin"},
+            6: {color: "yellow"}, 7: {color: "aqua"}, 8: {color: "aqua"}, 9: {color: "red"},};
+
+// Define classes for the legend to be displayed
+var classes1 = [["Forest","Cropland","Grassland","Wetland","Settlements","Other"]];
+
+var viz_lc = {min: 1, max: 6, palette: ["green","yellow","moccasin","aqua","red","gray"]};
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Add data to the map viewers below
+
+var Map1 = ui.Map();
+var Map2 = ui.Map();
+var Map3 = ui.Map();
+
+Map1.setCenter(-88.7051, 17.2371, 7);
+Map2.setCenter(-88.7051, 17.2371, 7);
+Map3.setCenter(-88.7051, 17.2371, 7);
+
+Map1.setControlVisibility({layerList: 1, zoomControl: 0, scaleControl: 0, mapTypeControl: 0, fullscreenControl: 0, drawingToolsControl: 0});
+Map2.setControlVisibility({layerList: 1, zoomControl: 1, scaleControl: 0, mapTypeControl: 0, fullscreenControl: 0, drawingToolsControl: 0});
+Map3.setControlVisibility({layerList: 1, zoomControl: 0, scaleControl: 0, mapTypeControl: 0, fullscreenControl: 0, drawingToolsControl: 0});
+
+Map1.add(ui.Label("Training data, v1", {color: "navy"}));
+Map2.add(ui.Label("Training data, v2", {color: "navy"}));
+Map3.add(ui.Label("Training data, v3", {color: "navy"}));
+
+//////////////////////
+Map1.setOptions('SATELLITE');
+Map1.add(d.build(classes1[0],viz_lc['palette'])); // Adds the legend to the map
+Map1.addLayer(img1, a.viz, 'Landsat-9_2023-06-08', 0);
+
+// Load class classification results (6 IPCC classes)
+Map1.addLayer(cl_2023_1_l9_a, a.pal6cl, 'LC06_2023_1_L9_a_CART', 0);
+Map1.addLayer(cl_2023_1_l9_b, a.pal6cl, 'LC06_2023_1_L9_b_GTB', 0);
+Map1.addLayer(cl_2023_1_l9_c, a.pal6cl, 'LC06_2023_1_L9_c_MD_Euclidean', 0);
+Map1.addLayer(cl_2023_1_l9_d, a.pal6cl, 'LC06_2023_1_L9_d_MD_SAM', 0);
+//Map1.addLayer(cl_2023_1_l9_e, a.pal6cl, 'LC06_2023_1_L9_e_MD_Maha', 0);
+Map1.addLayer(cl_2023_1_l9_f, a.pal6cl, 'LC06_2023_1_L9_f_MD_Manhattan', 0);
+//Map1.addLayer(cl_2023_1_l9_g, a.pal6cl, 'LC06_2023_1_L9_g_SVM', 0);
+Map1.addLayer(cl_2023_1_l9_h, a.pal6cl, 'LC06_2023_1_L9_h_NaiveBayes', 0);
+Map1.addLayer(cl_2023_1_l9_i, a.pal6cl, 'LC06_2023_1_L9_i_RF', 1);
+
+
+// Load ancillary reference datasets
+Map1.addLayer(b.bz_ws_ln.clip(b.roi_bz_),{palette: "blue"},"Watersheds (mainland)", 0);
+Map1.addLayer(b.bz_dist_ln2.clip(b.roi_bz),{palette: "white"},"District boundaries", 0);
+Map1.addLayer(b.pa_bz_ln.clip(b.roi_bz),{palette: "black"},"Prot. areas", 1);
+Map1.addLayer(b.bnds_intl_ln2.clip(b.roi_bz),{palette: "white"},"Int'l boundaries", 1);
+
+//////////////////////
+
+Map2.setOptions('SATELLITE');
+Map2.addLayer(img1, a.viz, 'Landsat-9_2023-06-08', 0);
+
+// Load class classification results (6 IPCC classes)
+Map2.addLayer(cl_2023_2_l9_a, a.pal6cl, 'LC06_2023_2_L9_a_CART', 0);
+Map2.addLayer(cl_2023_2_l9_b, a.pal6cl, 'LC06_2023_2_L9_b_GTB', 0);
+Map2.addLayer(cl_2023_2_l9_c, a.pal6cl, 'LC06_2023_2_L9_c_MD_Euclidean', 0);
+Map2.addLayer(cl_2023_2_l9_d, a.pal6cl, 'LC06_2023_2_L9_d_MD_SAM', 0);
+//Map2.addLayer(cl_2023_2_l9_e, a.pal6cl, 'LC06_2023_2_L9_e_MD_Maha', 0);
+Map2.addLayer(cl_2023_2_l9_f, a.pal6cl, 'LC06_2023_2_L9_f_MD_Manhattan', 0);
+//Map2.addLayer(cl_2023_2_l9_g, a.pal6cl, 'LC06_2023_2_L9_g_SVM', 0);
+Map2.addLayer(cl_2023_2_l9_h, a.pal6cl, 'LC06_2023_2_L9_h_NaiveBayes', 0);
+Map2.addLayer(cl_2023_2_l9_i, a.pal6cl, 'LC06_2023_2_L9_i_RF', 1);
+
+
+// Load ancillary reference datasets
+Map2.addLayer(b.bz_ws_ln.clip(b.roi_bz_),{palette: "blue"},"Watersheds (mainland)", 0);
+Map2.addLayer(b.bz_dist_ln2.clip(b.roi_bz),{palette: "white"},"District boundaries", 0);
+Map2.addLayer(b.pa_bz_ln.clip(b.roi_bz),{palette: "black"},"Prot. areas", 1);
+Map2.addLayer(b.bnds_intl_ln2.clip(b.roi_bz),{palette: "white"},"Int'l boundaries", 1);
+
+//////////////////////
+
+Map3.setOptions('SATELLITE');
+Map3.addLayer(img1, a.viz, 'Landsat-9_2023-06-08', 0);
+
+// Load class classification results (6 IPCC classes)
+Map3.addLayer(cl_2023_3_l9_a, a.pal6cl, 'LC06_2023_3_L9_a_CART', 0);
+Map3.addLayer(cl_2023_3_l9_b, a.pal6cl, 'LC06_2023_3_L9_b_GTB', 0);
+Map3.addLayer(cl_2023_3_l9_c, a.pal6cl, 'LC06_2023_3_L9_c_MD_Euclidean', 0);
+Map3.addLayer(cl_2023_3_l9_d, a.pal6cl, 'LC06_2023_3_L9_d_MD_SAM', 0);
+//Map3.addLayer(cl_2023_3_l9_e, a.pal6cl, 'LC06_2023_3_L9_e_MD_Maha', 0);
+Map3.addLayer(cl_2023_3_l9_f, a.pal6cl, 'LC06_2023_3_L9_f_MD_Manhattan', 0);
+//Map3.addLayer(cl_2023_3_l9_g, a.pal6cl, 'LC06_2023_3_L9_g_SVM', 0);
+Map3.addLayer(cl_2023_3_l9_h, a.pal6cl, 'LC06_2023_3_L9_h_NaiveBayes', 0);
+Map3.addLayer(cl_2023_3_l9_i, a.pal6cl, 'LC06_2023_3_L9_i_RF', 1);
+
+// Load ancillary reference datasets
+Map3.addLayer(b.bz_ws_ln.clip(b.roi_bz_),{palette: "blue"},"Watersheds (mainland)", 0);
+Map3.addLayer(b.bz_dist_ln2.clip(b.roi_bz),{palette: "white"},"District boundaries", 0);
+Map3.addLayer(b.pa_bz_ln.clip(b.roi_bz),{palette: "black"},"Prot. areas", 1);
+Map3.addLayer(b.bnds_intl_ln2.clip(b.roi_bz),{palette: "white"},"Int'l boundaries", 1);
+
+/////
+var title = ui.Label('Classification of land cover of Mesoamerica (2024)', {stretch:'horizontal',textAlign:'center',fontWeight:'bold',fontSize:'24px'});
+var credits = ui.Label('credits: Landsat data courtesy of NASA and the USGS', {stretch:'horizontal',textAlign:'center',fontSize:'14px', color: "gray"});
+var linker = ui.Map.Linker([Map1, Map2, Map3]);
+var mapGrid = ui.Panel([Map1, Map2, Map3], ui.Panel.Layout.Flow('horizontal'), {stretch: 'both'});
+
+ui.root.widgets().reset([title, credits, mapGrid]);
+ui.root.setLayout(ui.Panel.Layout.Flow('vertical'));
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////

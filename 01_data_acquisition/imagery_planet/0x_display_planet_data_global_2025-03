@@ -1,0 +1,72 @@
+/* Last updated: 07.05.2025
+This script displays all of the pan-tropical Planet / NICFI mosaic data, for selected dates below.
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+NOTICE: By accessing this script, you agree to the following licensing agreement from Planet, including
+the clause that "all use must be non-commercial or not in the primary pursuit of profit."
+https://assets.planet.com/docs/Planet_ParticipantLicenseAgreement_NICFI.pdf
+
+To access the Planet data for your own use, including downloading or other use in Google Earth Engine, please refer to:
+https://www.planet.com/nicfi/
+
+The imagery included here can be accessed from the following:
+https://code.earthengine.google.com/?scriptPath=Examples:datasets/projects_planet-nicfi_assets_basemaps_africa
+https://code.earthengine.google.com/?scriptPath=Examples:datasets/projects_planet-nicfi_assets_basemaps_americas
+https://code.earthengine.google.com/?scriptPath=Examples:datasets/projects_planet-nicfi_assets_basemaps_asia */
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+var a = require('users/bzgeo/examples:_ancillary/ps__misc');
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+var title = ui.Label("Image Viewer: Planet / NICFI mosaics (incl. NDVI)", {stretch:'horizontal',textAlign:'center',fontWeight:'bold',fontSize:'24px', color: 'black'});
+var descr = ui.Label("instructions: swipe the images and change the dates to compare them", {stretch:'horizontal',textAlign:'center',fontSize: '14px', color: 'red'});
+var credits = ui.Label("credits: imagery © 2025 Planet Labs Inc.", {stretch:'horizontal',textAlign:'center',fontSize: '12px', color: 'gray'});
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// PART 1: SET UP LEFT AND RIGHT PANEL WINDOWS
+
+var leftMap = ui.Map(); // CREATE LEFT MAP
+var rightMap = ui.Map(); // CREATE RIGHT MAP
+
+leftMap.setOptions('TERRAIN');
+leftMap.setControlVisibility(true);
+
+rightMap.setOptions('TERRAIN');
+rightMap.setControlVisibility(true);
+
+var leftSelector = addLayerSelector(leftMap, 2, 'top-left');
+var rightSelector = addLayerSelector(rightMap, 65, 'top-right');
+
+
+function addLayerSelector(mapToChange, defaultValue, position) {
+  var label = ui.Label('Select an image to visualize');
+  function updateMap(selection) {
+    mapToChange.layers().set(0, ui.Map.Layer(a.images_ps[selection].visualize(a.pal_ps),{},"Planet imagery (true color)", 0));
+    mapToChange.layers().set(1, ui.Map.Layer(a.images_ps[selection].visualize(a.pal_ps_1),{},"Planet imagery (false color)", 1));
+    mapToChange.layers().set(2, ui.Map.Layer(a.images_ps[selection].visualize(a.pal_ndvi),{},"Planet NDVI", 0));
+    mapToChange.layers().set(3, ui.Map.Layer(a.bnds_intl_ln2,{palette: "white"},"Int'l boundaries", 1));
+    }
+var select = ui.Select({items: Object.keys(a.images_ps), onChange: updateMap});
+  select.setValue(Object.keys(a.images_ps)[defaultValue], true);
+var controlPanel = ui.Panel({widgets: [label, select], style: {position: position}});
+  mapToChange.add(controlPanel);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// PART 2: INITIATE THE SPLIT PANEL
+
+var splitPanel = ui.SplitPanel({firstPanel:leftMap, secondPanel:rightMap, wipe:true, style:{stretch: 'both'}});
+
+ui.root.widgets().reset([title, descr, credits, splitPanel]);
+ui.root.setLayout(ui.Panel.Layout.Flow('vertical'));
+
+var linker = ui.Map.Linker([leftMap, rightMap]);
+
+leftMap.setCenter(10.72, 0, 3);
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

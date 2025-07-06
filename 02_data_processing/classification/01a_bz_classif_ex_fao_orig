@@ -1,0 +1,285 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var Forest_mangroves = 
+    /* color: #269b1e */
+    /* shown: false */
+    ee.FeatureCollection(
+        [ee.Feature(
+            ee.Geometry.Point([-88.99200439453125, 16.787552614412263]),
+            {
+              "class": 1,
+              "system:index": "0"
+            }),
+        ee.Feature(
+            ee.Geometry.Point([-88.66722106933594, 16.65208370944]),
+            {
+              "class": 1,
+              "system:index": "1"
+            }),
+        ee.Feature(
+            ee.Geometry.Point([-88.63906860351562, 17.05426138981729]),
+            {
+              "class": 1,
+              "system:index": "2"
+            }),
+        ee.Feature(
+            ee.Geometry.Point([-88.51916313171387, 16.867106135774762]),
+            {
+              "class": 1,
+              "system:index": "3"
+            })]),
+    Crops_grass = 
+    /* color: #ff1b03 */
+    /* shown: false */
+    ee.FeatureCollection(
+        [ee.Feature(
+            ee.Geometry.Point([-88.71005058288574, 17.890295221445307]),
+            {
+              "class": 2,
+              "system:index": "0"
+            }),
+        ee.Feature(
+            ee.Geometry.Point([-88.66318702697754, 17.947625640994044]),
+            {
+              "class": 2,
+              "system:index": "1"
+            }),
+        ee.Feature(
+            ee.Geometry.Point([-88.61967086791992, 17.937091955439826]),
+            {
+              "class": 2,
+              "system:index": "2"
+            }),
+        ee.Feature(
+            ee.Geometry.Point([-88.46002578735352, 18.362997593747227]),
+            {
+              "class": 2,
+              "system:index": "3"
+            })]),
+    Soil = 
+    /* color: #ede622 */
+    /* shown: false */
+    ee.FeatureCollection(
+        [ee.Feature(
+            ee.Geometry.Point([-88.4860110282898, 16.592868132611923]),
+            {
+              "class": 3,
+              "system:index": "0"
+            }),
+        ee.Feature(
+            ee.Geometry.Point([-88.48472356796265, 16.588035500285898]),
+            {
+              "class": 3,
+              "system:index": "1"
+            }),
+        ee.Feature(
+            ee.Geometry.Point([-88.40466499328613, 16.62936600450796]),
+            {
+              "class": 3,
+              "system:index": "2"
+            }),
+        ee.Feature(
+            ee.Geometry.Point([-88.42668056488037, 16.62459597255815]),
+            {
+              "class": 3,
+              "system:index": "3"
+            })]),
+    geometry = 
+    /* color: #98ff00 */
+    /* shown: false */
+    ee.Geometry.Polygon(
+        [[[-88.538818359375, 18.79191774423444],
+          [-89.615478515625, 17.99963161491187],
+          [-89.505615234375, 15.813395760460585],
+          [-88.868408203125, 15.559544421458101],
+          [-87.38525390625, 16.636191878397664],
+          [-87.56103515625, 18.166730410221938]]]);
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+/* Orig. script: 14.02.2018 from Erica Lupi, FAO
+https://code.earthengine.google.com/?scriptPath=users%2FEL%2FCaribbean_Islands%3ABelize
+https://code.earthengine.google.com/798bfc7507eab2387c9756bea5e40169 */
+
+//-------------SENTINEL mosaic 
+
+// var countries = ee.FeatureCollection('ft:1tdSwUL7MVpOauSgRzqVTOwdfy17KDbw-1d9omPw');
+// var Country = countries.filterMetadata('Country', 'equals','Belize');
+var Country = ee.FeatureCollection("users/EL/Belize");
+Map.centerObject (Country, 9);
+
+var bufferPoly = function(feature) {
+  return feature.buffer(100);   
+};
+var bufferedPolys = Country.map(bufferPoly);
+
+Map.addLayer(bufferedPolys, {palette: '000000'}, 'Buffer');
+
+// var raster = ee.Image("users/EL/IITF_CJS44_barbados_landcov_v2_geotiff");
+// Map.addLayer(raster,{ min:1, max:8, palette: ['339820','e6f0c2', 'ec9f13','d80a0a', '19d8c6', '3dd649','171dd6', 'd314d6'] },'Classification');
+// Map.addLayer(raster.randomVisualizer(), {}, 'Belize Aleatory Classes', true);
+
+
+//Upload Landsat imagery
+var Landsat5 = ee.ImageCollection('LANDSAT/LT5_L1T');
+var Landsat7 = ee.ImageCollection('LANDSAT/LE7_L1T');
+var Landsat8 = ee.ImageCollection('LANDSAT/LC08/C01/T1_RT');
+
+// code of Cities and Water Masks
+var Asia = ee.ImageCollection("users/kindgard/Asia/Asia");
+var Africa = ee.ImageCollection("users/kindgard/Africa");
+var SUD = ee.ImageCollection("users/kindgard/SUD");
+var AfricaS = ee.ImageCollection("users/kindgard/AfricaS");
+var AmericaN = ee.ImageCollection("users/kindgard/AmericaN");
+var Asia2 = ee.ImageCollection("users/kindgard/Asia2");
+var GL30_Coll = ee.ImageCollection(Asia.merge(Africa).merge(SUD).merge(AfricaS).merge(AmericaN).merge(Asia2));
+var GL30 = GL30_Coll.mosaic().clip(bufferedPolys);
+var cities = GL30.eq(80);
+
+var city = ee.Image('users/christinacorbane/MT_comp_proj').clip(bufferedPolys);
+//var cities = city.gte(3);
+var water = ee.Image('JRC/GSW1_0/GlobalSurfaceWater').clip(bufferedPolys);
+var water2 = water.select('transition').lte(2).or(water.select('transition').eq(7)).or(water.select('transition').eq(8)); 
+
+
+//-------------SENTINEL mosaic 2016-2017 December-May
+
+//Rename sentinel bands 
+var S2_BANDS = ['B2',   'B3',    'B4',  'B8',  'B11',    'B12'];
+var STD_NAMES = ['blue', 'green', 'red', 'nir', 'swir1', 'swir2'];
+
+//Cloud score
+var cloudScore = function(img) {
+  // A helper to apply an expression and linearly rescale the output.
+  var rescale = function(img, exp, thresholds) {
+    return img.expression(exp, {img: img})
+        .subtract(thresholds[0]).divide(thresholds[1] - thresholds[0]);
+  };
+
+  // Compute several indicators of cloudyness and take the minimum of them.
+  var score = ee.Image(1.0);
+  // Clouds are reasonably bright in the blue band.
+  score = score.min(rescale(img, 'img.blue', [0.1, 0.3]));
+
+  // Clouds are reasonably bright in all visible bands.
+  score = score.min(rescale(img, 'img.red + img.green + img.blue', [0.2, 0.8]));
+
+  // Clouds are reasonably bright in all infrared bands.
+  score = score.min(
+      rescale(img, 'img.nir + img.swir1 + img.swir2', [0.3, 0.8]));
+
+  // However, clouds are not snow.
+  var ndsi = img.normalizedDifference(['green', 'swir1']);
+  return score.min(rescale(ndsi, 'img', [0.8, 0.6]));
+};
+
+// Filter the collection
+var collection = ee.ImageCollection('COPERNICUS/S2')
+    .filterBounds(bufferedPolys)
+    .filterDate('2015-11-01', '2017-08-10')
+    .filter(ee.Filter.calendarRange(335,151, 'day_of_year')) 
+    .filterMetadata('CLOUDY_PIXEL_PERCENTAGE', 'less_than' ,90)
+    
+//Add the cloudscore band 
+var collectionScored = collection.map(function(img) {
+      img = img.divide(10000); //esto se hace porque las imagenes Sentinel estan reescaladas
+      var score = cloudScore(img.select(S2_BANDS, STD_NAMES)).rename ('cloudscore');
+      return img.select(S2_BANDS, STD_NAMES).addBands(score);
+    });
+
+//Function to mask cloudy pixels which are less than X
+var cloudthreshold = 10;
+var maskClouds = function(image) {
+    return image.updateMask(image.select(['cloudscore']).lte(cloudthreshold))
+};
+
+//Apply the masking functions 
+var collectionmasked = collectionScored.map(maskClouds);
+
+
+// Define visualization parameters for a true color image.
+var vizParams = {'bands': ['nir', 'swir1', 'red'], 'max': 0.4, 'gamma': 1.2};
+//Map.addLayer(collectionmasked.median().clip(bufferedPolys), vizParams);
+
+//Mosaic with quality Bands
+var qualityBands = function(image) {
+var newImage = image.addBands(image.normalizedDifference(['B8', 'B4' ]))
+return (newImage)
+};
+var L8qualityBands = collection.map(qualityBands);
+var mosaicQB = L8qualityBands.qualityMosaic('nd').clip(bufferedPolys);
+Map.addLayer (mosaicQB, {bands: ['B8', 'B3', 'B4'], min: [1000 , 700, 660], max:[5000, 1700, 1500] }, 'Mosaic quality Bands', true );
+
+
+//sample points and classification
+var points = ee.FeatureCollection([Forest_mangroves, Crops_grass, Soil
+]).flatten();
+
+var palette = [['269b1e','ff1b03', 'ede622']]; 
+var trainingS = mosaicQB.sampleRegions({
+collection: points,
+properties: ['class'],
+scale: 30
+});
+var bandsSent = ['B2',   'B3',    'B4',  'B8',  'B11',    'B12'
+];
+var trainedS = ee.Classifier.smileCart().train(trainingS, 'class', bandsSent);
+var classifiedsentinel = mosaicQB.select(bandsSent).classify(trainedS);
+
+// Editing
+
+// var corrector = function(geom, mal, bien, clasif) {
+//   var binario = geom.reduceToImage(['class'], ee.Reducer.first());
+//   var condicion = binario.and(clasif.eq(mal));
+//   var clasC = clasif.where(condicion, bien);
+//   return clasC};
+
+// var correction  = corrector (c4t1, 4, 1, classifiedsentinel);
+
+//Mask 
+
+var classified_correct = classifiedsentinel.where(water2.eq(1),4);
+var classified_correct2 = classified_correct.where(cities.eq(1),5);
+Map.addLayer(classified_correct2,{ min:1, max:5, palette: ['269b1e','ff1b03', 'ede622', '2fffcf', 'c61e8a'] },'Classification with Masks');
+
+var lim = geometry.toGeoJSON()
+Export.image.toAsset({
+  image: classified_correct2,
+  description: "Belize_class",
+  region: lim,
+  scale: 30,
+ maxPixels: 50e9});
+
+var BelizeX = ee.Image('users/EL/Belize_class');
+//Exercise 7: Print Statistics for Forest
+
+// var A_Forest = ee.Image('users/EL/A&B_forest');
+var A_f = BelizeX.eq(1);
+var areaForest = A_f.multiply(ee.Image.pixelArea().divide(10000));
+var stats_areaF = areaForest.reduceRegion({
+  reducer: ee.Reducer.sum(),
+  geometry: lim,
+  scale: 30,
+  maxPixels: 500000000000
+});
+print ('Forest area:',stats_areaF.get('classification'), 'ha');
+
+/////
+
+print(mosaicQB);
+
+Export.image.toAsset({
+  image: mosaicQB,
+  description: "Belize_mosaic",
+  assetId: 'bz_sentinel2_l1c_20151101_20170810_30m',
+  region: lim,
+  scale: 30,
+ maxPixels: 50e9});
+
+//Exercise 6: Export Image to Asset (takes 1h usually)
+
+// Export.image.toAsset({
+//   image: classified_correct2,
+//   description: "AB_forest",
+//   region: geometry,
+//   scale: 30,
+// maxPixels: 50e9});
+
+

@@ -1,0 +1,282 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var geometry = 
+    /* color: #d63000 */
+    /* shown: false */
+    ee.Geometry.Point([-89.04875003210911, 17.40851678241094]),
+    planet2016_11 = ee.Image("projects/bz-sdg/compil_imagery/optical/planet/bz_planetscope_q2016_11"),
+    planet2017_11 = ee.Image("projects/bz-sdg/compil_imagery/optical/planet/bz_planetscope_q2017_11"),
+    planet2018_11 = ee.Image("projects/bz-sdg/compil_imagery/optical/planet/bz_planetscope_q2018_11"),
+    planet2019_11 = ee.Image("projects/bz-sdg/compil_imagery/optical/planet/bz_planetscope_q2019_11"),
+    planet2020_09 = ee.Image("projects/bz-sdg/compil_imagery/optical/planet/bz_planetscope_2020_09"),
+    planet2021_09 = ee.Image("projects/bz-sdg/compil_imagery/optical/planet/bz_planetscope_2021_09"),
+    planet2022_09 = ee.Image("projects/bz-sdg/compil_imagery/optical/planet/bz_planetscope_2022_09"),
+    planet2023_09 = ee.Image("projects/bz-sdg/compil_imagery/optical/planet/bz_planetscope_2023_09"),
+    bz_aoi = ee.FeatureCollection("projects/sica/aoi/limites_nacionales/bz_bounds_swbd"),
+    bz_ccdc0 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/BZ_MRV/CCDC-SMA_BZ/bz_ccdc_0"),
+    bz_ccdc2600 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/BZ_MRV/CCDC-SMA_BZ/bz_ccdc_2600"),
+    bz_ccdc10000 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/BZ_MRV/CCDC-SMA_BZ/bz_ccdc_10000"),
+    bz_forest_2000 = ee.Image("projects/bz-sdg/compil_ecosys/terrestrial/bz_fc_svr_2000"),
+    gt_aoi = ee.FeatureCollection("projects/servir-sco-assets/assets/SCO_CA/BZ_MRV/aoi_BZ/guatemala_marn"),
+    gt_ccdc0 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/CCDC-SMA/ccdc0_30m"),
+    gt_ccdc2600 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/CCDC-SMA/ccdc2600_30m"),
+    gt_ccdc10000 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/CCDC-SMA/ccdc10000_30m"),
+    gt_forest_2000 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/ForestMask/gt_bosque_2001_gimbot"),
+    elsv_aoi = ee.FeatureCollection("projects/servir-sco-assets/assets/SCO_CA/BZ_MRV/aoi_BZ/el_salvador_marn"),
+    elsv_ccdc0 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/BZ_MRV/CCDC-SMA_ESV/elsv_ccdc_0"),
+    elsv_ccdc2600 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/BZ_MRV/CCDC-SMA_ESV/elsv_ccdc_2600"),
+    elsv_ccdc10000 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/BZ_MRV/CCDC-SMA_ESV/elsv_ccdc_10000"),
+    ca_forest_2000 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/BZ_MRV/ForestMask_BZ/Forest2000_CA"),
+    cuencas = ee.FeatureCollection("projects/sica/compil_geofisica/cuencas/mes_cuencas_ccad"),
+    bz_mang = ee.Image("projects/ee-christineaevans/assets/Belize_Man2600_yod"),
+    servir_man = ee.Image("projects/servir-sco-assets/assets/SCO_CA/OnlySERVIRRas"),
+    bz_lanm = ee.Image("projects/servir-sco-assets/assets/SCO_CA/Publication/bz_landtrendr_control_mmu1"),
+    bz_mang7 = ee.Image("projects/ee-christineaevans/assets/Belize_Man7000_yod"),
+    bz_mang0 = ee.Image("projects/ee-christineaevans/assets/Belize_Man0_yod"),
+    bz_mang10 = ee.Image("projects/ee-christineaevans/assets/Belize_Man10000_yod");
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+
+/* Script to visualize outputs of CCDC-SMA 
+Script by Lauren Carey. Last updated 12 Oct 2023. 
+
+Background: 
+The outputs of CCDC-SMA contain pixels in which changes were detected between 2000 - 2023. 
+Each pixel contains the year in which the disturbance was detected. 
+
+
+Instructions:
+(a) Run the script.
+(b) Explore pre-run CCDC-SMA outputs by toggling the layers of the map on and off.
+(c) If time allows, import your own CCDC-SMA results in Section 0.
+
+*********************************************************************************************************
+
+Table of Contents:
+(0) Import your own CCDC-SMA results (Save this part for last)
+(1) Define variables
+(2) Define visualization parameters 
+(3) Visualize all changes between 2000 - 2023
+(4) Visualize changes by year 
+(5) Visualize Planet NICFI images  
+(6) Generate histograms of estimated hectares disturbed 
+ 
+*/
+
+// *************************** (0) Import your own CCDC-SMA results *************************************
+
+// // Import your own results from CCDC-SMA by activating the lines of code in this section (0)
+
+// // Define the variable ccdc_user by pasting the name of your import after the = sign 
+// var ccdc_user = 
+
+// // Visualization parameters 
+// var vis_ccdc = {min: 2000, max: 2023, palette: ['#FF33FF', '#4B0082', '#0000FF', '#00FF00', '#FFFF00', '#FF7F00', '#FF0000']};
+
+// // Add the image to the map using your visualization parameters
+// Map.addLayer(ccdc_user, vis_ccdc, 'Users CCDC-SMA Results');
+
+
+//************************** (1) - Define Variables ***************************************
+
+// Here we will bring into the script all the data we want to visualize 
+
+// Import pre-run results from CCDC-SMA
+var ccdc_low = bz_mang0; // result from the low threshold of 0 
+var ccdc_med = bz_mang;
+//bz_lanm.select('yod'); // result from the medium threshold of 2600
+var ccdc_high = bz_mang10; // result from the high threshold of 10000
+
+// Import aoi and forest mask from the start year of your time period 
+var aoi = bz_aoi; 
+var outline_aoi = ee.Image().byte().paint({featureCollection:aoi,width:1});
+var watersheds = cuencas; 
+var outline_ws = ee.Image().byte().paint({featureCollection:watersheds,width:1});
+var ForestMask_start = servir_man
+
+
+//************************** (2) - Define Visualization Parameters ***************************************
+
+// Here we will define how we want our data to show up on the map, including color schemes
+
+// Define visualization parameters
+var vis_ccdc = {min: 2000, max: 2023, palette: ['#FF33FF', '#4B0082', '#0000FF', '#00FF00', '#FFFF00', '#FF7F00', '#FF0000']};
+var vis_forest = {min: 0, max:255, palette:'green'};
+
+// Adjust basemap settings 
+var baseChange = [
+  {featureType: 'all', stylers: [{invert_lightness: true}]},
+  {elementType: 'labels', stylers: [{visibility: 'off', color: '#000055'}]},
+  {featureType: 'road', elementType: 'geometry', stylers: [{visibility: 'off', color: '#000055'}]},
+  {featureType: 'road', elementType: 'labels', stylers: [{visibility: 'off'}]}];
+
+
+
+//************************** (3) - Visualize all change between 2000 - 2023 ***************************************
+
+// Here we visualize all changes detected by CCDC-SMA between 2000 and 2023. We will also add our forest layer and aoi to the map.
+
+// Add AOI and forest masks to the map
+Map.setCenter(-88.7319, 17.1767, 9);  // Set center and zoom of map 
+Map.setOptions('baseChange', {'baseChange': baseChange}); // apply basemap settings 
+Map.addLayer(ForestMask_start.clip(aoi), vis_forest, 'Y2000 Forest', false);
+Map.addLayer(outline_aoi,{},'Belize', false);
+Map.addLayer(outline_ws, {}, 'Watersheds', false);
+
+// Add the CCDC-SMA outputs to the map 
+Map.addLayer(ccdc_low.clip(aoi), vis_ccdc, 'Y2000-2023, Threshold 0', false); // Here "false" indicates that the user must manually check the checkbox for this layer so it will appear on the map
+Map.addLayer(ccdc_med.clip(aoi), vis_ccdc, 'Y2000-2023, Threshold 2600', false);
+Map.addLayer(ccdc_high.clip(aoi), vis_ccdc, 'Y2000-2023, Threshold 10000');
+
+
+//************************** (4) - Visualize change by year ***************************************
+
+// Here will will isolate changes for specific years in order to visually compare between them 
+// Use the .select() command to select the year property and .eq() to make your selection equal to the year you want to isolate
+
+
+// Changes detected during 2018
+var ccdc_low2018 = ccdc_low.updateMask(ccdc_low.select('year').eq(2018)); 
+var ccdc_med2018 = ccdc_med.updateMask(ccdc_med.select('year').eq(2018)); 
+var ccdc_high2018 = ccdc_high.updateMask(ccdc_high.select('year').eq(2018));
+
+// Changes detected during 2019
+var ccdc_low2019 = ccdc_low.updateMask(ccdc_low.select('year').eq(2019)); 
+var ccdc_med2019 = ccdc_med.updateMask(ccdc_med.select('year').eq(2019)); 
+var ccdc_high2019 = ccdc_high.updateMask(ccdc_high.select('year').eq(2019));
+
+// Changes detected during 2020
+var ccdc_low2020 = ccdc_low.updateMask(ccdc_low.select('year').eq(2020)); 
+var ccdc_med2020 = ccdc_med.updateMask(ccdc_med.select('year').eq(2020)); 
+var ccdc_high2020 = ccdc_high.updateMask(ccdc_high.select('year').eq(2020));
+
+// Changes detected during 2022
+var ccdc_low2022 = ccdc_low.updateMask(ccdc_low.select('year').eq(2022)); 
+var ccdc_med2022 = ccdc_med.updateMask(ccdc_med.select('year').eq(2022)); 
+var ccdc_high2022 = ccdc_high.updateMask(ccdc_high.select('year').eq(2022)); 
+
+// Changes detected during 2023 (Jan - Aug)
+var ccdc_low2023 = ccdc_low.updateMask(ccdc_low.select('year').eq(2023)); 
+var ccdc_med2023 = ccdc_med.updateMask(ccdc_med.select('year').eq(2023)); 
+var ccdc_high2023 = ccdc_high.updateMask(ccdc_high.select('year').eq(2023)); 
+
+// Add change from individual years to map 
+
+// 2018
+Map.addLayer(ccdc_low2018.clip(aoi), {palette: ['purple']}, 'Y2018 Disturbance, Threshold 0', false); 
+Map.addLayer(ccdc_med2018.clip(aoi), {palette: ['red']}, 'Y2018 Disturbance, Threshold 2600', false); 
+Map.addLayer(ccdc_high2018.clip(aoi), {palette: ['yellow']}, 'Y2018 Disturbance, Threshold 10000', false); 
+
+// 2019
+Map.addLayer(ccdc_low2019.clip(aoi), {palette: ['purple']}, 'Y2019 Disturbance, Threshold 0', false); 
+Map.addLayer(ccdc_med2019.clip(aoi), {palette: ['red']}, 'Y2019 Disturbance, Threshold 2600', false); 
+Map.addLayer(ccdc_high2019.clip(aoi), {palette: ['yellow']}, 'Y2019 Disturbance, Threshold 10000', false); 
+
+// 2020
+Map.addLayer(ccdc_low2020.clip(aoi), {palette: ['purple']}, 'Y2020 Disturbance, Threshold 0', false); 
+Map.addLayer(ccdc_med2020.clip(aoi), {palette: ['red']}, 'Y2020 Disturbance, Threshold 2600', false); 
+Map.addLayer(ccdc_high2020.clip(aoi), {palette: ['yellow']}, 'Y2020 Disturbance, Threshold 10000', false); 
+
+// 2022
+Map.addLayer(ccdc_low2022.clip(aoi), {palette: ['purple']}, 'Y2022 Disturbance, Threshold 0', false); 
+Map.addLayer(ccdc_med2022.clip(aoi), {palette: ['red']}, 'Y2022 Disturbance, Threshold 2600', false); 
+Map.addLayer(ccdc_high2022.clip(aoi), {palette: ['yellow']}, 'Y2022 Disturbance, Threshold 10000', false); 
+
+// 2023
+Map.addLayer(ccdc_low2023.clip(aoi), {palette: ['purple']}, 'Y2023 Disturbance, Threshold 0', false); 
+Map.addLayer(ccdc_med2023.clip(aoi), {palette: ['red']}, 'Y2023 Disturbance, Threshold 2600', false); 
+Map.addLayer(ccdc_high2023.clip(aoi), {palette: ['yellow']}, 'Y2023 Disturbance, Threshold 10000', false); 
+
+
+//************************** (5) - Visualize Planet NICFI Data ***************************************
+
+/* Section 5a: If you do NOT have a Planet account to access NICFI imagery, activate the following lines and 
+deactivate the lines under section 5b until the export section*/
+
+// Prior to 2020, 6-mo mosaics were release from Planet. From 2020 onward, monthly mosaics were released. 
+
+// 6 mo- Planet mosaics 
+var planet2016Nov = planet2016_11; // 2016 June-November Planet mosaic
+var planet2017Nov = planet2017_11; // 2017 June-November Planet mosaic
+var planet2018Nov = planet2018_11 // 2018 June-November Planet mosaic 
+var planet2019Nov = planet2019_11 // 2019 June-November Planet mosaic 
+
+// Monthly Planet mosaics
+var planet2020Sep = planet2020_09; // 2020 September Planet mosaic
+var planet2021Sep = planet2021_09; // 2021 September Planet mosaic 
+var planet2022Sep = planet2022_09; // 2022 September Planet mosaic
+var planet2023Sep = planet2023_09; // 2023 September Planet mosaic
+
+// Visualization parameters for the Planet imagery 
+var vis = {"bands":["R","G","B"],"min":64,"max":5454,"gamma":1.8};
+
+// Add the Planet images to the map using the visualization parameters you just defined 
+Map.addLayer(planet2016Nov, vis, '2016 Jun-Nov Planet mosaic', false);
+Map.addLayer(planet2017Nov, vis, '2017 Jun-Nov Planet mosaic', false);
+Map.addLayer(planet2018Nov, vis, '2018 Jun-Nov Planet mosaic', false);
+Map.addLayer(planet2019Nov, vis, '2019 Jun-Nov Planet mosaic', false);
+Map.addLayer(planet2020Sep, vis, '2020 Sep Planet mosaic', false);
+Map.addLayer(planet2021Sep, vis, '2021 Sep Planet mosaic', false);
+Map.addLayer(planet2022Sep, vis, '2022 Sep Planet mosaic', false);
+Map.addLayer(planet2023Sep, vis, '2023 Sep Planet mosaic', false);
+
+/* Section 5b: If you DO have a Planet account to access NICFI imagery, 
+deactivate the lines above in Section 5a and activate the following */
+
+// // Import NICFI imagery 
+// var nicfi = ee.ImageCollection("projects/planet-nicfi/assets/basemaps/americas");
+
+// // Filter basemaps by date and select the first image of the filtered results 
+// var basemap2021 = nicfi.filter(ee.Filter.date('2021-01-01','2021-04-01'))
+//                   .filterBounds(aoi.geometry()).median()
+
+// var basemap2020 = nicfi.filter(ee.Filter.date('2020-01-01','2020-12-31'))
+//                   .filterBounds(aoi.geometry()).median()
+
+// var basemap2022 = nicfi.filter(ee.Filter.date('2022-01-01','2022-04-01'))
+//                   .filterBounds(aoi.geometry()).median()
+
+// var basemap2019 = nicfi.filter(ee.Filter.date('2019-01-01','2019-12-01'))
+//                   .filterBounds(aoi.geometry()).median()
+                  
+// var basemap2018 = nicfi.filter(ee.Filter.date('2018-01-01','2018-12-31'))
+//                   .filterBounds(aoi.geometry()).median() 
+                  
+// // Visualization parameters for the Planet imagery 
+// var vis = {"bands":["R","G","B"],"min":64,"max":5454,"gamma":1.8};
+
+// // Add the Planet images to the map using the visualization parameters you just defined 
+// Map.addLayer(basemap2022.clip(aoi), vis, '2022 Planet mosaic', false);
+// Map.addLayer(basemap2021.clip(aoi), vis, '2021 Planet mosaic', false);
+// Map.addLayer(basemap2020.clip(aoi), vis, '2020 Planet mosaic', false);
+// Map.addLayer(basemap2019.clip(aoi), vis, '2019 Planet mosaic', false);
+// Map.addLayer(basemap2018.clip(aoi), vis, '2018 Planet mosaic', false);
+
+
+// ************************ (6) - Create Histogram of Estimated Area Disturbed ********************************
+
+// Select the year band from the CCDC-SMA image
+var ccdc_low_year = ccdc_low.select(['year']);
+var ccdc_med_year = ccdc_med.select(['year']);
+var ccdc_high_year = ccdc_high.select(['year']);
+
+// Create histograms for all three thresholds 
+
+// Low threshold (0)
+var hist_low = ui.Chart.image.histogram(ccdc_low_year.clip(aoi), aoi, 100) // 100m x 100m = 1 hectare 
+  .setSeriesNames(['Threshold: 0, Estimated Area Disturbed (ha.)'])
+  .setOptions({title:'Est. Area Disturbed, 2000-2023',hAxis: {title: 'Year'},vAxis: {title: 'Area (hectares)'},series: {0: {color: 'orange'}}});
+
+// Medium threshold (2600) 
+var hist_med = ui.Chart.image.histogram(ccdc_med_year.clip(aoi), aoi, 100) // 100m x 100m = 1 hectare 
+  .setSeriesNames(['Threshold: 2600, Estimated Area Disturbed (ha.)'])
+  .setOptions({title:'Est. Area Disturbed, 2000-2023',hAxis: {title: 'Year'},vAxis: {title: 'Area (hectares)'},series: {0: {color: 'red'}}});
+
+// High threshold (10000)
+var hist_high = ui.Chart.image.histogram(ccdc_high_year.clip(aoi), aoi, 100) // 100m x 100m = 1 hectare 
+  .setSeriesNames(['Threshold: 10000, Estimated Area Disturbed (ha.)'])
+  .setOptions({title:'Est. Area Disturbed, 2000-2023',hAxis: {title: 'Year'},vAxis: {title: 'Area (hectares)'},series: {0: {color: 'purple'}}});
+
+// Print the histogram to the console 
+print(hist_low);
+print(hist_med);
+print(hist_high);
+

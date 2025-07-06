@@ -1,0 +1,333 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var mcd43a4_202306 = ee.Image("users/servirbz/compil_imagery/optical/modis/mcd43a4_bz/bz_mcd43a4_2023-06"),
+    l9_20230608 = ee.Image("users/servirbz/compil_imagery/optical/landsat/bz_landsat_boa/bz_20230608_l9_refl"),
+    s2_20230608 = ee.Image("users/servirbz/compil_imagery/optical/sentinel2/bz_s2_boa/bz_sentinel2_boa_2023-06-08_20m_cl"),
+    ps = ee.Image("projects/bz-sdg/compil_imagery/optical/planet/bz_planetscope_2023_06");
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+// Extract forest cover data for Belize for 2023 using Supervised Machine Learning
+// Orig.: https://code.earthengine.google.com/?scriptPath=users%2Fbzgeo%2Fbz_lcc%3A2d_classif_2023%2Fbz_l9_s2_mod_20230608e_classif_rf_comparison
+// Questions? Contact eac0021@uah.edu or emil.cherrington@nasa.gov
+// Last updated: 7 Aug. 2024
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Load required packages
+var a = require('users/servirbz/bz_mrv:x_workshop_202408/00_training_data_2023'); // loads training data for classifications
+var b = require('users/bzgeo/examples:_ancillary/mes'); // Loads various ancillary datasets
+var c = require('users/servirbz/packages:img_list_landsat_sma_fc__bz'); // Loads LandTrendr-generated mosaics of BZ from 1984-2024
+var d = require('users/brookwilliams/utils:apps/legend'); // This pulls B. Williams' legend code
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Establish regions of interest (ROIs)
+var roi = ee.Geometry.Polygon([[[-87.68, 19.289437],[-87.68, 15.585054],[-89.991352, 15.585054],[-89.991352, 19.289437]]]); // BZ bounding box ROI
+var roi2 = ee.FeatureCollection("users/servirbz/aoi/lac/cam/bz/bz_bounds_swbd00"); // Belize shapefile ROI
+
+// Load land mask
+var msk = ee.Image('UMD/hansen/global_forest_change_2015').select('datamask').eq(1); // From Hansen et al.
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// 'Original' band names (L9, S2 band names have been adjusted to corresponding Landsat-7 band names)
+var fro_l9_s2 =  ['B1','B2','B3','B4','B5','B7']; // Blue, Green, Red, NIR, SWIR1, SWIR2
+var fro_mcd = ['b1','b2','b3','b4','b6','b7']; // Blue, Green, Red, NIR, SWIR1, SWIR2
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Clip L9, S2, MODIS imagery to Belize boundaries
+var l9 = l9_20230608.clip(a.bz);
+var s2 = s2_20230608.clip(a.bz);
+var mcd = mcd43a4_202306.select(fro_mcd,fro_l9_s2).reproject('EPSG:4326', null, 500).clip(a.bz);
+
+// Load LandTrendr-generated harmonized Landsat mosaic for 2023 dry season
+var l8_l9_2023c = c.img_raw[2023];
+
+// The L9 and S2 data resampled to 100m are used in the supervised classification to generate 1 ha. scale data (and speed up calculations)
+//var l9_100m = l9_20230608.clip(a.bz).reproject('EPSG:4326', null, 100);
+var l9_100m = l8_l9_2023c.clip(a.bz).reproject('EPSG:4326', null, 100);
+var s2_100m = s2_20230608.clip(a.bz).reproject('EPSG:4326', null, 100);
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Load various DW functions
+
+// Probability Bands to Class ID borrowed from Google ('projects/dynamicworld/default:modules/inference')
+var probabilityBandsToClassId = function(probability_bands) {
+  return probability_bands.toArray().arrayArgmax().arrayGet([0])};
+
+// Load / compile data | Load DW collections
+var dw_prob = ee.Image(ee.ImageCollection('GOOGLE/DYNAMICWORLD/V1')
+                        .select(["water","trees","grass","flooded_vegetation","crops","shrub_and_scrub","built","bare","snow_and_ice"])
+                        .filterDate("2023-01-01T00:00","2023-05-31T23:59")
+                        .mosaic()).updateMask(msk); // DW global data as probabilities
+
+var dw_lc = probabilityBandsToClassId(dw_prob).clip(roi);
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// DW Visualizations
+
+// Class ID visualization borrowed from Google ('projects/dynamicworld/default:modules/inference')
+var viz_lc = {min: 0, max: 8,
+palette: ["419BDF","397D49","88B053","7A87C6","E49635","DFC35A","C4281B","A59B8F","B39FE1"]};
+
+var viz_fc = {min: 0, max: 2, palette:['lightskyblue','green','salmon']};
+
+// DW class names
+//var classes = [["water","trees","grass","flooded_vegetation","crops","scrub_shrub","builtup","bare_ground","snow_ice"]];
+var classes1 = [["Forest","Cropland","Grassland","Wetland","Settlements","Other"]];
+
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Reclass DW LC data to forest cover maps
+var dw_fc = dw_lc.remap([0,1,2,3,4,5,6,7,8],[0,1,2,2,2,2,2,2,2]).select(['remapped'],['fcover']);
+var dw_lc6 = dw_lc.remap([0,1,2,3,4,5,6,7,8],[4,1,3,4,2,3,5,6,6]).select(['remapped'],['lcover']);
+var dw_urban = dw_lc.remap([0,1,2,3,4,5,6,7,8],[0,2,2,2,2,2,1,2,2]).select(['remapped'],['urban']);
+var dw_msk = dw_lc.remap([0,1,2,3,4,5,6,7,8],[0,1,1,1,1,1,1,1,1]).select(['remapped'],['land_msk']);
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Implement supervised classifications
+
+// Landsat-9 data, resampled to 100m
+var class_2023_l9a1 = l9_100m.classify(ee.Classifier.smileRandomForest(200)
+                            .train({features:l9_100m
+                            .sampleRegions({collection:a.training_2023a,properties:['class'],scale:100}),classProperty:'class',}));
+
+var class_2023_l9a2 = l9_100m.classify(ee.Classifier.smileRandomForest(200)
+                            .train({features:l9_100m
+                            .sampleRegions({collection:a.training_2023b,properties:['class'],scale:100}),classProperty:'class',}));
+                            
+var class_2023_l9a3 = l9_100m.classify(ee.Classifier.smileRandomForest(200)
+                            .train({features:l9_100m
+                            .sampleRegions({collection:a.training_2023c,properties:['class'],scale:100}),classProperty:'class',}));
+
+
+var class_2023_l9b1 = l9_100m.classify(ee.Classifier.smileCart()
+                            .train({features:l9_100m
+                            .sampleRegions({collection:a.training_2023a,properties:['class'],scale:100}),classProperty:'class',}));
+
+var class_2023_l9b2 = l9_100m.classify(ee.Classifier.smileCart()
+                            .train({features:l9_100m
+                            .sampleRegions({collection:a.training_2023b,properties:['class'],scale:100}),classProperty:'class',}));
+                            
+var class_2023_l9b3 = l9_100m.classify(ee.Classifier.smileCart()
+                            .train({features:l9_100m
+                            .sampleRegions({collection:a.training_2023c,properties:['class'],scale:100}),classProperty:'class',}));
+
+
+var class_2023_l9c1 = l9_100m.classify(ee.Classifier.smileGradientTreeBoost(20)
+                            .train({features:l9_100m
+                            .sampleRegions({collection:a.training_2023a,properties:['class'],scale:100}),classProperty:'class',}));
+
+var class_2023_l9c2 = l9_100m.classify(ee.Classifier.smileGradientTreeBoost(20)
+                            .train({features:l9_100m
+                            .sampleRegions({collection:a.training_2023b,properties:['class'],scale:100}),classProperty:'class',}));
+                            
+var class_2023_l9c3 = l9_100m.classify(ee.Classifier.smileGradientTreeBoost(20)
+                            .train({features:l9_100m
+                            .sampleRegions({collection:a.training_2023c,properties:['class'],scale:100}),classProperty:'class',}));
+
+
+var class_2023_l9d1 = l9_100m.classify(ee.Classifier.minimumDistance()
+                            .train({features:l9_100m
+                            .sampleRegions({collection:a.training_2023a,properties:['class'],scale:100}),classProperty:'class',}));
+
+var class_2023_l9d2 = l9_100m.classify(ee.Classifier.minimumDistance()
+                            .train({features:l9_100m
+                            .sampleRegions({collection:a.training_2023b,properties:['class'],scale:100}),classProperty:'class',}));
+                            
+var class_2023_l9d3 = l9_100m.classify(ee.Classifier.minimumDistance()
+                            .train({features:l9_100m
+                            .sampleRegions({collection:a.training_2023c,properties:['class'],scale:100}),classProperty:'class',}));
+
+
+var class_2023_l9e1 = l9_100m.classify(ee.Classifier.libsvm()
+                            .train({features:l9_100m
+                            .sampleRegions({collection:a.training_2023a,properties:['class'],scale:100}),classProperty:'class',}));
+
+var class_2023_l9e2 = l9_100m.classify(ee.Classifier.libsvm()
+                            .train({features:l9_100m
+                            .sampleRegions({collection:a.training_2023b,properties:['class'],scale:100}),classProperty:'class',}));
+                            
+var class_2023_l9e3 = l9_100m.classify(ee.Classifier.libsvm()
+                            .train({features:l9_100m
+                            .sampleRegions({collection:a.training_2023c,properties:['class'],scale:100}),classProperty:'class',}));
+                            
+
+var class_2023_l9f1 = l9_100m.classify(ee.Classifier.smileNaiveBayes()
+                            .train({features:l9_100m
+                            .sampleRegions({collection:a.training_2023a,properties:['class'],scale:100}),classProperty:'class',}));
+
+var class_2023_l9f2 = l9_100m.classify(ee.Classifier.smileNaiveBayes()
+                            .train({features:l9_100m
+                            .sampleRegions({collection:a.training_2023b,properties:['class'],scale:100}),classProperty:'class',}));
+                            
+var class_2023_l9f3 = l9_100m.classify(ee.Classifier.smileNaiveBayes()
+                            .train({features:l9_100m
+                            .sampleRegions({collection:a.training_2023c,properties:['class'],scale:100}),classProperty:'class',}));
+
+/*
+// Sentinel-2 data, resampled to 100m
+
+var class_2023_s2a = s2_100m.classify(ee.Classifier.smileRandomForest(200)
+                            .train({features:s2_100m
+                            .sampleRegions({collection:a.training_2023a,properties:['class'],scale:100}),classProperty:'class',}));
+
+var class_2023_s2b = s2_100m.classify(ee.Classifier.smileRandomForest(200)
+                            .train({features:s2_100m
+                            .sampleRegions({collection:a.training_2023b,properties:['class'],scale:100}),classProperty:'class',}));
+
+var class_2023_s2c = s2_100m.classify(ee.Classifier.smileRandomForest(200)
+                            .train({features:s2_100m
+                            .sampleRegions({collection:a.training_2023c,properties:['class'],scale:100}),classProperty:'class',}));
+
+// MODIS 500m data
+var class_2023_mcd = mcd_500m.classify(ee.Classifier.smileRandomForest(200)
+                            .train({features:mcd_500m
+                            .sampleRegions({collection:a.training_2023c,properties:['class'],scale:500}),classProperty:'class',}));
+*/
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Display spectral signatures derived from the training polygons
+
+// Define colors to be used for the display of the spectral signatures
+var classes = {0:{color:"green"},1:{color:"yellow"},2:{color:"moccasin"},3:{color:"aqua"},4:{color:"red"},5:{color:"gray"}};
+
+var viz_lc2 = {min: 1, max: 6,
+palette: ["green","yellow","moccasin","aqua","red","gray"]};
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Landsat-9
+print(ui.Chart.image.regions(
+    l9_100m.divide(100), a.training_2023a, ee.Reducer.mean(), 100, 'label', a.wl).setChartType('LineChart')
+    .setOptions({title: 'Spectral reflectance - Landsat-9 (8 June 2023) - v1',
+          vAxis: {title: '% Reflectance'}, hAxis: {title: 'Wavelength (μm)'}, lineWidth: 1, pointSize: 4, series: classes}));
+
+print(ui.Chart.image.regions(
+    l9_100m.divide(100), a.training_2023b, ee.Reducer.mean(), 100, 'label', a.wl).setChartType('LineChart')
+    .setOptions({title: 'Spectral reflectance - Landsat-9 (8 June 2023) - v2',
+          vAxis: {title: '% Reflectance'}, hAxis: {title: 'Wavelength (μm)'}, lineWidth: 1, pointSize: 4, series: classes}));
+
+print(ui.Chart.image.regions(
+    l9_100m.divide(100), a.training_2023c, ee.Reducer.mean(), 100, 'label', a.wl).setChartType('LineChart')
+    .setOptions({title: 'Spectral reflectance - Landsat-9 (8 June 2023) - v3',
+          vAxis: {title: '% Reflectance'}, hAxis: {title: 'Wavelength (μm)'}, lineWidth: 1, pointSize: 4, series: classes}));
+
+/*
+// Sentinel-2
+print(ui.Chart.image.regions(
+    s2.divide(100), a.training_2023c, ee.Reducer.mean(), 20, 'label', a.wl).setChartType('LineChart')
+    .setOptions({title: 'Spectral reflectance - Sentinel-2 (8 June 2023) - 20m',
+          vAxis: {title: '% Reflectance'}, hAxis: {title: 'Wavelength (μm)'}, lineWidth: 1, pointSize: 4, series: classes}));
+
+print(ui.Chart.image.regions(
+    s2_100m.divide(100), a.training_2023c, ee.Reducer.mean(), 100, 'label', a.wl).setChartType('LineChart')
+    .setOptions({title: 'Spectral reflectance - Sentinel-2 (8 June 2023) - 100m',
+          vAxis: {title: '% Reflectance'}, hAxis: {title: 'Wavelength (μm)'}, lineWidth: 1, pointSize: 4, series: classes}));
+
+// MODIS
+print(ui.Chart.image.regions(
+    mcd_500m.divide(100),a.training_2023c, ee.Reducer.mean(), 500, 'label', a.wl).setChartType('LineChart')
+    .setOptions({title: 'Spectral reflectance - MODIS MCD43A4 (June 2023) - 500m',
+          vAxis: {title: '% Reflectance'}, hAxis: {title: 'Wavelength (μm)'}, lineWidth: 1, pointSize: 4, series: classes}));
+*/
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Estimate forest area and % forest cover
+
+// Define function for extracting forest cover statistics and printing those statistics in the Console on the right ->
+
+function fstat(img,res,aoi,year) {
+// NOTE: For this function to work, we need to supply the forest cover map, the spatial resolution, AOI, and the analysis year.
+
+// Extract area for use in % forest cover calculations below
+var area_bz = ee.Number(ee.FeatureCollection(a.bz).geometry().area().divide(1000000)); // Area of Belize = 22,230 km2
+
+// Extract forest area
+var f_stat = ee.Number(img.clip(aoi).select('fcover').eq(1).multiply(ee.Image.pixelArea()).reduceRegion({
+  geometry: aoi.geometry(), reducer: ee.Reducer.sum(), scale: res, maxPixels: 1e18}).get('fcover')).divide(1000000);
+
+// Extract non-forest area
+var nf_stat = ee.Number(img.clip(aoi).select('fcover').eq(2).multiply(ee.Image.pixelArea()).reduceRegion({
+  geometry: aoi.geometry(), reducer: ee.Reducer.sum(), scale: res, maxPixels: 1e18}).get('fcover')).divide(1000000);
+
+// Select which statistics are printed out
+print('Year: ', year); // This prints the analysis year (defined by the operator)
+print('est. forest area: ', f_stat, 'sq. km'); // This prints the forest cover extent in square kilometers
+print('est. % forest cover: ', f_stat.divide(area_bz).multiply(100),'percent'); // This prints the forest cover extent in percent
+//print('est. % non-forest cover: ', nf_stat.divide(roi).multiply(100),'percent'); // This prints the non-forest cover extent in percent
+}
+
+// Extract forest cover statistics for 2023 using previously defined function
+/*
+print("Landsat-based classification (v1)");
+
+fstat(for_l9.reproject({crs: 'EPSG: 32616', scale: 100})
+                   .reduceResolution({reducer: ee.Reducer.mode(), maxPixels: 10000, bestEffort: true}),
+                   100, a.bz, 2023);
+
+print("Sentinel-2 based classification");
+
+fstat(for_s2.reproject({crs: 'EPSG: 32616', scale: 100})
+                   .reduceResolution({reducer: ee.Reducer.mode(), maxPixels: 10000, bestEffort: true}),
+                   100, a.bz, 2023);
+
+print("MODIS-based classification");
+
+fstat(for_mcd.reproject({crs: 'EPSG: 32616', scale: 100})
+                   .reduceResolution({reducer: ee.Reducer.mode(), maxPixels: 10000, bestEffort: true}),
+                   100, a.bz, 2023);
+
+*/
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Add data to the map viewer below
+
+Map.setCenter(-88.4608, 17.5117, 9);
+Map.setOptions('SATELLITE');
+Map.add(d.build(classes1[0],viz_lc2['palette'])); // Adds the legend to the map
+
+Map.addLayer(dw_fc, viz_fc,'Forest Cover (DW)', 0);
+Map.addLayer(dw_lc, viz_lc, 'Land Cover (DW) - full', 0);
+Map.addLayer(dw_lc6, a.pal6cl, 'Land Cover (DW) - 6 classes', 0);
+
+// Load class classification results (6 IPCC classes) - Landsat only
+
+Map.addLayer(class_2023_l9b1, a.pal6cl, 'LC10_2023_L9_b1_CART', 0);
+Map.addLayer(class_2023_l9b2, a.pal6cl, 'LC10_2023_L9_b2_CART', 0);
+Map.addLayer(class_2023_l9b3, a.pal6cl, 'LC10_2023_L9_b3_CART', 0);
+
+Map.addLayer(class_2023_l9c1, a.pal6cl, 'LC10_2023_L9_c1_GTB', 0);
+Map.addLayer(class_2023_l9c2, a.pal6cl, 'LC10_2023_L9_c2_GTB', 0);
+Map.addLayer(class_2023_l9c3, a.pal6cl, 'LC10_2023_L9_c3_GTB', 0);
+
+Map.addLayer(class_2023_l9d1, a.pal6cl, 'LC10_2023_L9_d1_MinDistance', 0);
+Map.addLayer(class_2023_l9d2, a.pal6cl, 'LC10_2023_L9_d2_MinD', 0);
+Map.addLayer(class_2023_l9d3, a.pal6cl, 'LC10_2023_L9_d3_MinDistance', 0);
+
+Map.addLayer(class_2023_l9f1, a.pal6cl, 'LC10_2023_L9_e1_NaiveBayes', 0);
+Map.addLayer(class_2023_l9f2, a.pal6cl, 'LC10_2023_L9_e2_NaiveBayes', 0);
+Map.addLayer(class_2023_l9f3, a.pal6cl, 'LC10_2023_L9_e3_NaiveBayes', 0);
+
+Map.addLayer(class_2023_l9e1, a.pal6cl, 'LC10_2023_L9_e1_SVM', 0);
+Map.addLayer(class_2023_l9e2, a.pal6cl, 'LC10_2023_L9_e2_SVM', 0);
+Map.addLayer(class_2023_l9e3, a.pal6cl, 'LC10_2023_L9_e3_SVM', 0);
+
+Map.addLayer(class_2023_l9a1, a.pal6cl, 'LC10_2023_L9_a1_RF', 1);
+Map.addLayer(class_2023_l9a2, a.pal6cl, 'LC10_2023_L9_a2_RF', 0);
+Map.addLayer(class_2023_l9a3, a.pal6cl, 'LC10_2023_L9_a3_RF', 0);
+
+// Load ancillary reference datasets
+Map.addLayer(b.bz_ws_ln.clip(b.roi_bz_),{palette: "blue"},"Watersheds (mainland)", false);
+Map.addLayer(b.bz_dist_ln2.clip(b.roi_bz),{palette: "white"},"District boundaries", false);
+Map.addLayer(b.pa_bz_ln.clip(b.roi_bz),{palette: "black"},"Prot. areas", true);
+Map.addLayer(b.bnds_intl_ln2.clip(b.roi_bz),{palette: "white"},"Int'l boundaries", true);
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////

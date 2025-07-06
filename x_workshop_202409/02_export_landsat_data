@@ -1,0 +1,34 @@
+// Export Landsat image mosaics to Google Drive
+// Last updated: 22.09.2024 
+
+var a = require('users/servirbz/packages:img_list_landsat_sma_fc__bz'); // Loads LandTrendr-generated mosaics of BZ from 1984-2024
+var b = require('users/servirbz/packages:sma_std3');
+var c = require('users/servirbz/packages:img_optical_landsat_mosaic_bz');
+
+
+var roi = ee.FeatureCollection(ee.Geometry.Rectangle(-76.1, 6.5, -92.5, 21.65)).geometry().buffer(300);
+
+var img_2023 = a.img_raw[2023];
+//print(img_2023);
+
+
+Map.setCenter(-88.4608, 17.5117, 9);
+Map.setOptions('SATELLITE');
+Map.addLayer(img_2023, a.viz_543, 'Landsat_dry_season_2023', true);
+
+
+// Export data to Google Drive
+
+Export.image.toDrive({'image': img_2023.toInt16(), 'region': img_2023.geometry().bounds(), 'scale': 30,
+        'description': 'export_lt_2023_100m', 'folder': 'x_tmp_gee_outputs',
+        'fileNamePrefix': 'bz_landsat_2023_utm_030m', 'crs': 'EPSG:32616', 'maxPixels': 1e13});
+
+// Export to EE asset space
+
+/*
+
+Export.image.toAsset({image: img_2023.toInt16(),  description: 'export_ee_lt_2023',
+  assetId: 'users/your_username/bz_landsat_boa_fitted_2023_030m',
+  scale: 30,  region: img_2023.geometry().bounds(),  maxPixels: 1e13});
+
+*/

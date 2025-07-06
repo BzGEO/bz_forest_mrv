@@ -1,0 +1,38 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var belize = ee.FeatureCollection("projects/sica/aoi/limites_nacionales/bz_bounds_swbd");
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+// Last updated: 11 Oct. 2023
+
+// Load required packages
+var a = require('users/bzgeo/examples:_ancillary/mes');
+var b = require('users/servirbz/packages:sma_std3');
+var x = require('users/servirbz/packages:img_list_landsat_sma_fc__mes');
+
+// Load Landsat 'data cube' for 1984-2023
+var lt_stack = ee.Image("projects/bz-sdg/compil_imagery/optical/landsat_ft/mes_landsat_boa_fitted_r70_1984_2023_0619_100m").clip(a.mes_bnds);
+var landsat_2000 = lt_stack.select(['B1_2000','B2_2000','B3_2000','B4_2000','B5_2000','B7_2000'],['B1','B2','B3','B4','B5','B7']);
+var landsat_2020 = lt_stack.select(['B1_2020','B2_2020','B3_2020','B4_2020','B5_2020','B7_2020'],['B1','B2','B3','B4','B5','B7']);
+
+// Generate forest cover estimates
+var for_2000 = b.for_sma_60(b.sma_(landsat_2000)).select(['constant'],['fcover']);
+var for_2020 = b.for_sma_60(b.sma_(landsat_2020)).select(['constant'],['fcover']);
+
+// Import aoi
+var aoi = belize; 
+
+// Test
+print(for_2000);
+print(for_2020);
+
+Map.centerObject(aoi, 8);
+Map.addLayer(for_2000.clip(aoi), {palette: ['orange', 'green']}, 'Forest2000', true);
+Map.addLayer(for_2020.clip(aoi), {palette: ['orange', 'green']}, 'Forest2020', true);
+
+Export.image.toAsset({
+  image: for_2020.clip(aoi),
+  description: 'bz_lc_2020_2class',
+  assetId: 'users/laurencarey/belize/bz_lc_2020_2class',
+  pyramidingPolicy: {'.default': 'mode'},
+  scale: 30,
+  maxPixels: 1e13
+  });

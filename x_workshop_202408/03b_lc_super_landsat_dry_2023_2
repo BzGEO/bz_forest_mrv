@@ -1,0 +1,220 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var mcd43a4_202306 = ee.Image("users/servirbz/compil_imagery/optical/modis/mcd43a4_bz/bz_mcd43a4_2023-06"),
+    l9_20230608 = ee.Image("users/servirbz/compil_imagery/optical/landsat/bz_landsat_boa/bz_20230608_l9_refl"),
+    s2_20230608 = ee.Image("users/servirbz/compil_imagery/optical/sentinel2/bz_s2_boa/bz_sentinel2_boa_2023-06-08_20m_cl");
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+// Extract forest cover data for Belize for 2023 using Supervised Machine Learning
+// Orig.: https://code.earthengine.google.com/?scriptPath=users%2Fbzgeo%2Fbz_lcc%3A2d_classif_2023%2Fbz_l9_s2_mod_20230608e_classif_rf_comparison
+// Questions? Contact eac0021@uah.edu or emil.cherrington@nasa.gov
+// Last updated: 6 Aug. 2024
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Load required packages
+var a = require('users/servirbz/bz_mrv:x_workshop_202408/00_training_data_2023'); // loads training data for classifications
+var b = require('users/bzgeo/examples:_ancillary/mes'); // Loads various ancillary datasets
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// 'Original' band names (L9, S2 band names have been adjusted to corresponding Landsat-7 band names)
+var fro_l9_s2 =  ['B1','B2','B3','B4','B5','B7']; // Blue, Green, Red, NIR, SWIR1, SWIR2
+var fro_mcd = ['b1','b2','b3','b4','b6','b7']; // Blue, Green, Red, NIR, SWIR1, SWIR2
+
+// Renamed Band names -> for use in the histogram display chart
+var to_mcd =  ['B1_MCD','B2_MCD','B3_MCD','B4_MCD','B5_MCD','B7_MCD'];
+var to_l9 = ['B1_L9','B2_L9','B3_L9','B4_L9','B5_L9','B7_L9'];
+var to_s2 = ['B1_S2','B2_S2','B3_S2','B4_S2','B5_S2','B7_S2'];
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Clip L9, S2, MODIS imagery to Belize boundaries
+var l9 = l9_20230608.clip(a.bz);
+var s2 = s2_20230608.clip(a.bz);
+var mcd = mcd43a4_202306.select(fro_mcd,fro_l9_s2).reproject('EPSG:4326', null, 500).clip(a.bz);
+
+// The L9 and S2 data resampled to 100m are used in the supervised classification to generate 1 ha. scale data (and speed up calculations)
+var l9_100m = l9_20230608.clip(a.bz).reproject('EPSG:4326', null, 100);
+var s2_100m = s2_20230608.clip(a.bz).reproject('EPSG:4326', null, 100);
+
+// The following (all resampled to 500m) are used in the histogram display exercise in the Console ->
+var l9_500m = l9_20230608.clip(a.bz).updateMask(a.msk).reproject('EPSG:4326', null, 500).select(fro_l9_s2,to_l9);
+var s2_500m = s2_20230608.clip(a.bz).updateMask(a.msk).reproject('EPSG:4326', null, 500).select(fro_l9_s2,to_s2);
+var mcd_500m = mcd43a4_202306.clip(a.bz).updateMask(a.msk).reproject('EPSG:4326', null, 500).select(fro_mcd,to_mcd);
+
+//
+var bz_comb = ee.Image.cat([l9_500m,s2_500m,mcd_500m]);
+var bz_comb_b3_b4 = bz_comb.select(['B3_L9','B3_S2','B3_MCD','B4_L9','B4_S2','B4_MCD']);
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Implement supervised Random Forest classifications -> use 200 trees in all cases
+
+// MODIS 500m data
+var class_2023_mcd = mcd_500m.classify(ee.Classifier.smileRandomForest(200)
+                            .train({features:mcd_500m
+                            .sampleRegions({collection:a.training_2023,properties:['class'],scale:500}),classProperty:'class',}));
+
+// Landsat-9 data, resampled to 100m
+var class_2023_l9 = l9_100m.classify(ee.Classifier.smileRandomForest(200)
+                            .train({features:l9_100m
+                            .sampleRegions({collection:a.training_2023,properties:['class'],scale:100}),classProperty:'class',}));
+
+// Sentinel-2 data, resampled to 100m
+var class_2023_s2 = s2_100m.classify(ee.Classifier.smileRandomForest(200)
+                            .train({features:s2_100m
+                            .sampleRegions({collection:a.training_2023,properties:['class'],scale:100}),classProperty:'class',}));
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Display spectral signatures derived from the training polygons
+
+// Define colors to be used for the display of the spectral signatures
+var classes = {0: {color: "green"}, 1: {color: "limegreen"}, 2: {color: "teal"},
+            3: {color: "olive"}, 4: {color: "magenta"}, 5: {color: "yellow"},
+            6: {color: "orange"}, 7: {color: "aqua"}, 8: {color: "blue"}, 9: {color: "red"},};
+
+// MODIS
+print(ui.Chart.image.regions(
+    mcd_500m.divide(100), a.training_2023, ee.Reducer.mean(), 500, 'label', a.wl).setChartType('LineChart')
+    .setOptions({title: 'Spectral reflectance - MODIS MCD43A4 (June 2023) - 500m',
+          vAxis: {title: '% Reflectance'}, hAxis: {title: 'Wavelength (μm)'}, lineWidth: 1, pointSize: 4, series: classes}));
+
+// Landsat-9
+print(ui.Chart.image.regions(
+    l9.divide(100), a.training_2023, ee.Reducer.mean(), 30, 'label', a.wl).setChartType('LineChart')
+    .setOptions({title: 'Spectral reflectance - Landsat-9 (8 June 2023) - 30m',
+          vAxis: {title: '% Reflectance'}, hAxis: {title: 'Wavelength (μm)'}, lineWidth: 1, pointSize: 4, series: classes}));
+
+print(ui.Chart.image.regions(
+    l9_100m.divide(100), a.training_2023, ee.Reducer.mean(), 100, 'label', a.wl).setChartType('LineChart')
+    .setOptions({title: 'Spectral reflectance - Landsat-9 (8 June 2023) - 100m',
+          vAxis: {title: '% Reflectance'}, hAxis: {title: 'Wavelength (μm)'}, lineWidth: 1, pointSize: 4, series: classes}));
+
+// Sentinel-2
+print(ui.Chart.image.regions(
+    s2.divide(100), a.training_2023, ee.Reducer.mean(), 20, 'label', a.wl).setChartType('LineChart')
+    .setOptions({title: 'Spectral reflectance - Sentinel-2 (8 June 2023) - 20m',
+          vAxis: {title: '% Reflectance'}, hAxis: {title: 'Wavelength (μm)'}, lineWidth: 1, pointSize: 4, series: classes}));
+
+print(ui.Chart.image.regions(
+    s2_100m.divide(100), a.training_2023, ee.Reducer.mean(), 100, 'label', a.wl).setChartType('LineChart')
+    .setOptions({title: 'Spectral reflectance - Sentinel-2 (8 June 2023) - 100m',
+          vAxis: {title: '% Reflectance'}, hAxis: {title: 'Wavelength (μm)'}, lineWidth: 1, pointSize: 4, series: classes}));
+
+// Display image histograms for Sentinel-2, Landsat-9, MODIS (all resampled to 500m resolution)
+print(ui.Chart.image.histogram(bz_comb_b3_b4, a.bz, 500));
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Prints the numbers of pixels that have been sampled for each class in the 10 sets of training data.
+
+print("Number of 100m pixels sampled for each class:");
+
+// ['forest_bl','forest_nl','forest_mg','scrub','savanna','ag_pasture','ag_crops','wetland','water','urban']; 
+
+print(s2_100m.sampleRegions({collection:a.training_2023.filter(ee.Filter.eq('class', 1)),properties:['class'],scale:100}));
+print(s2_100m.sampleRegions({collection:a.training_2023.filter(ee.Filter.eq('class', 2)),properties:['class'],scale:100}));
+print(s2_100m.sampleRegions({collection:a.training_2023.filter(ee.Filter.eq('class', 3)),properties:['class'],scale:100}));
+print(s2_100m.sampleRegions({collection:a.training_2023.filter(ee.Filter.eq('class', 4)),properties:['class'],scale:100}));
+print(s2_100m.sampleRegions({collection:a.training_2023.filter(ee.Filter.eq('class', 5)),properties:['class'],scale:100}));
+print(s2_100m.sampleRegions({collection:a.training_2023.filter(ee.Filter.eq('class', 6)),properties:['class'],scale:100}));
+print(s2_100m.sampleRegions({collection:a.training_2023.filter(ee.Filter.eq('class', 7)),properties:['class'],scale:100}));
+print(s2_100m.sampleRegions({collection:a.training_2023.filter(ee.Filter.eq('class', 8)),properties:['class'],scale:100}));
+print(s2_100m.sampleRegions({collection:a.training_2023.filter(ee.Filter.eq('class', 9)),properties:['class'],scale:100}));
+print(s2_100m.sampleRegions({collection:a.training_2023.filter(ee.Filter.eq('class', 10)),properties:['class'],scale:100}));
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Reclass generated land cover data to forest cover data
+var for_l9 = class_2023_mcd.remap([1,2,3,4,5,6,7,8,9,10],[1,1,1,2,2,2,2,2,2,2]).select(['remapped'],['fcover']);
+var for_mcd = class_2023_mcd.remap([1,2,3,4,5,6,7,8,9,10],[1,1,1,2,2,2,2,2,2,2]).select(['remapped'],['fcover']);
+var for_s2 = class_2023_s2.remap([1,2,3,4,5,6,7,8,9,10],[1,1,1,2,2,2,2,2,2,2]).select(['remapped'],['fcover']);
+
+// Reclass generated land cover data to 6 class land cover data
+var lc_l9 = class_2023_l9.remap([1,2,3,4,5,6,7,8,9,10],[1,1,1,3,3,3,2,4,4,5]).select(['remapped'],['fcover']);
+var lc_mcd = class_2023_mcd.remap([1,2,3,4,5,6,7,8,9,10],[1,1,1,3,3,3,2,4,4,5]).select(['remapped'],['fcover']);
+var lc_s2 = class_2023_s2.remap([1,2,3,4,5,6,7,8,9,10],[1,1,1,3,3,3,2,4,4,5]).select(['remapped'],['fcover']);
+
+// Color palette -> 6 IPCC classes
+var pal6cl = {min:1, max:6,
+palette: ['green','yellow','moccasin','aqua','red','gray']};
+// 1: Forest, 2: Cropland, 3: Grassland, 4: Wetland, 5: Settlements, 6: Other land
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Estimate forest area and % forest cover
+
+// Define function for extracting forest cover statistics and printing those statistics in the Console on the right ->
+
+function fstat(img,res,aoi,year) {
+// NOTE: For this function to work, we need to supply the forest cover map, the spatial resolution, AOI, and the analysis year.
+
+// Extract area for use in % forest cover calculations below
+var area_bz = ee.Number(ee.FeatureCollection(a.bz).geometry().area().divide(1000000)); // Area of Belize = 22,230 km2
+
+// Extract forest area
+var f_stat = ee.Number(img.clip(aoi).select('fcover').eq(1).multiply(ee.Image.pixelArea()).reduceRegion({
+  geometry: aoi.geometry(), reducer: ee.Reducer.sum(), scale: res, maxPixels: 1e18}).get('fcover')).divide(1000000);
+
+// Extract non-forest area
+var nf_stat = ee.Number(img.clip(aoi).select('fcover').eq(2).multiply(ee.Image.pixelArea()).reduceRegion({
+  geometry: aoi.geometry(), reducer: ee.Reducer.sum(), scale: res, maxPixels: 1e18}).get('fcover')).divide(1000000);
+
+// Select which statistics are printed out
+print('Year: ', year); // This prints the analysis year (defined by the operator)
+print('est. forest area: ', f_stat, 'sq. km'); // This prints the forest cover extent in square kilometers
+print('est. % forest cover: ', f_stat.divide(area_bz).multiply(100),'percent'); // This prints the forest cover extent in percent
+//print('est. % non-forest cover: ', nf_stat.divide(roi).multiply(100),'percent'); // This prints the non-forest cover extent in percent
+}
+
+// Extract forest cover statistics for 2023 using previously defined function
+
+print("Landsat-based classification (v1)");
+
+fstat(for_l9.reproject({crs: 'EPSG: 32616', scale: 100})
+                   .reduceResolution({reducer: ee.Reducer.mode(), maxPixels: 10000, bestEffort: true}),
+                   100, a.bz, 2023);
+
+print("Sentinel-2 based classification");
+
+fstat(for_s2.reproject({crs: 'EPSG: 32616', scale: 100})
+                   .reduceResolution({reducer: ee.Reducer.mode(), maxPixels: 10000, bestEffort: true}),
+                   100, a.bz, 2023);
+
+print("MODIS-based classification");
+
+fstat(for_mcd.reproject({crs: 'EPSG: 32616', scale: 100})
+                   .reduceResolution({reducer: ee.Reducer.mode(), maxPixels: 10000, bestEffort: true}),
+                   100, a.bz, 2023);
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Add data to the map viewer below
+
+Map.setCenter(-88.4608, 17.5117, 9);
+Map.setOptions('SATELLITE');
+
+// NOTE: We don't need to load the MODIS, L9, and S2 images in the viewer w/ this script b/c it is already done w/ the package we've loaded.
+
+//Map.addLayer(mcd, a.viz_543, 'MCD43A4_2023-06', false);
+//Map.addLayer(l9_20230608, a.viz_543, 'L9_2023-06-08', true);
+//Map.addLayer(s2_20230608, a.viz_543, 'S2_2023-06-08', false);
+
+// Load 10 class classification results
+Map.addLayer(class_2023_mcd, a.pal10cl, 'LC10_2023_MCD43A4_01', false);
+Map.addLayer(class_2023_l9,a.pal10cl, 'LC10_2023_L9_01', false);
+Map.addLayer(class_2023_s2,a.pal10cl, 'LC10_2023_S2_01', false);
+
+// Load 6 class classification results
+Map.addLayer(lc_mcd, pal6cl, 'LC6_2023_MCD43A4_01', false);
+Map.addLayer(lc_l9, pal6cl, 'LC6_2023_L9_01', false);
+Map.addLayer(lc_s2, pal6cl, 'LC6_2023_S2_01', false);
+
+// Load ancillary reference datasets
+Map.addLayer(b.bz_ws_ln.clip(b.roi_bz_),{palette: "blue"},"Watersheds (mainland)", false);
+Map.addLayer(b.bz_dist_ln2.clip(b.roi_bz),{palette: "white"},"District boundaries", false);
+Map.addLayer(b.pa_bz_ln.clip(b.roi_bz),{palette: "yellow"},"Prot. areas", true);
+Map.addLayer(b.bnds_intl_ln2.clip(b.roi_bz),{palette: "white"},"Int'l boundaries", true);
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////

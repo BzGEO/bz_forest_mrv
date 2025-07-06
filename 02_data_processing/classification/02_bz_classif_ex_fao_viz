@@ -1,0 +1,8 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var img = ee.Image("projects/bz-sdg/x_tmp/bz_lc_fao_2018/bz_sentinel2_l1c_20151101_20170810_30m");
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+
+Map.centerObject(img, 9);
+Map.addLayer(img, {bands: ['B8', 'B3', 'B4'], min: [1000 , 700, 660], max:[5000, 1700, 1500] }, 'S2_mosaic - viz1', false);
+Map.addLayer(img, {bands: ['B11', 'B8', 'B4'], min: [730, 1800, -740], max:[2200, 3800, 2000] }, 'S2_mosaic - viz2', true);
+Map.addLayer(img, {bands: ['B11', 'B8', 'B4'], min: -50, max: 3350}, 'S2_mosaic - viz3', false);

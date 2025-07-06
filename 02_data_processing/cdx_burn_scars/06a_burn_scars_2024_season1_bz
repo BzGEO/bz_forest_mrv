@@ -1,0 +1,78 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var roi = 
+    /* color: #d63000 */
+    /* shown: false */
+    /* displayProperties: [
+      {
+        "type": "rectangle"
+      }
+    ] */
+    ee.Geometry.Polygon(
+        [[[-89.26231135691069, 18.530174813659656],
+          [-89.26231135691069, 15.848841530877124],
+          [-87.65281428659819, 15.848841530877124],
+          [-87.65281428659819, 18.530174813659656]]], null, false),
+    aoi = ee.FeatureCollection("users/servirbz/aoi/lac/cam/bz/projects/bz_mfcl"),
+    scar1 = ee.FeatureCollection("projects/bz-sdg/x_tmp/fire_burn_scars/bz_central_burn_scars_l9_l1_svr_202403_202406_utm"),
+    scar2 = ee.FeatureCollection("projects/bz-sdg/x_tmp/fire_burn_scars/bz_south_burn_scars_l9_l1_svr_202306_202406_utm"),
+    lc = ee.Image("projects/bz-sdg/compil_ecosys/terrestrial/bz_lc_rf01_s2_20240602_010m"),
+    fc_dw = ee.Image("projects/bz-sdg/compil_ecosys/terrestrial/bz_fc_dw_202401_202404_030m"),
+    fc_l9 = ee.Image("projects/bz-sdg/compil_ecosys/terrestrial/bz_fc_landsat_20240531_030m"),
+    l_202306 = ee.Image("users/servirbz/compil_imagery/optical/landsat/bz_landsat_boa/bz_20230608_l9_refl"),
+    l_202402 = ee.Image("users/servirbz/compil_imagery/optical/landsat/bz_landsat_boa/bz_20240211_l8_refl"),
+    l_202403 = ee.Image("users/servirbz/compil_imagery/optical/landsat/bz_landsat_boa/bz_20240322_l9_refl"),
+    l_202405 = ee.Image("users/servirbz/compil_imagery/optical/landsat/bz_landsat_boa/bz_20240517_l8_refl"),
+    l_202406 = ee.Image("users/servirbz/compil_imagery/optical/landsat/bz_landsat_boa/bz_20240610_l9_refl");
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+// Last updated: 20.06.2024
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+var a = require('users/bzgeo/examples:_ancillary/mes');
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+var aoi_ln = ee.Image().byte().paint({featureCollection:ee.FeatureCollection(aoi),width:2});
+
+var scars1 = ee.Image().byte().paint({featureCollection:scar1,width:1});
+var scars2 = ee.Image().byte().paint({featureCollection:scar2,width:1});
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Landsat band 5-4-3 visualization
+var viz_543 = {min: [730, 1800, -740], max:[2200, 3800, 2000], bands:['B5','B4','B3']};
+
+// Classes - ONLY FOR REFERENCE
+var cl10 = ['forest_bl','forest_nl','forest_mg','scrub','savanna','ag_pasture','ag_crops','wetland','water','urban']; 
+
+// Color palette for LC maps
+var pal10cl = ['green','limegreen','teal','olive','magenta','yellow','orange','aqua','blue','maroon'];
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+var coll = {"dat":['2023-06-08','2024-02-11','2024-03-22','2024-05-17','2024-06-10'],
+            "img":[l_202306,l_202402,l_202403,l_202405,l_202406]};
+
+var dx = coll.dat;
+var ix = coll.img;
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+Map.addLayer(ix[0], viz_543, dx[0]+'_BOA_false_color', 0);
+Map.addLayer(ix[1], viz_543, dx[1]+'_BOA_false_color', 0);
+Map.addLayer(ix[2], viz_543, dx[2]+'_BOA_false_color', 0);
+Map.addLayer(ix[3], viz_543, dx[3]+'_BOA_false_color', 1);
+Map.addLayer(ix[4], viz_543, dx[4]+'_BOA_false_color', 0);
+/////
+Map.addLayer(lc,{min:1,max:10,palette: pal10cl}, 'LC_2023_S2_01__RF', 1);
+Map.addLayer(scars1, {palette: ['red']},'Scars (c)', 1);
+Map.addLayer(scars2, {palette: ['red']},'Scars (s)', 1);
+/////
+Map.addLayer(a.pa_bz_ln2, {palette: "yellow"}, "Prot. areas", 1);
+Map.addLayer(a.bz_dist_ln2, {palette: "black"}, "Districts", 1);
+Map.addLayer(a.bnds_intl_cam_ln2.clip(a.roi_bz), {palette: "white"},"Int'l boundaries", 1);
+/////
+Map.setCenter(-88.4608, 17.5117, 9);
+Map.setOptions('SATELLITE');
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////

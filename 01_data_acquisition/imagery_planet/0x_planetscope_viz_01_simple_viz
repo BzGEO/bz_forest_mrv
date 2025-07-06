@@ -1,0 +1,25 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var img1 = ee.Image("projects/bz-sdg/compil_imagery/optical/planet/bz_planetscope_2023_06"),
+    img2 = ee.Image("projects/bz-sdg/compil_imagery/optical/planet/bz_planetscope_2023_12"),
+    img3 = ee.Image("projects/bz-sdg/compil_imagery/optical/planet/bz_planetscope_2024_09"),
+    img4 = ee.Image("projects/bz-sdg/compil_imagery/optical/planet/bz_planetscope_2024_01");
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+// Last updated: 12 Nov. 2024
+
+Map.setCenter(-88.78209, 17.24996,14);
+
+var pal_ps_0 = {min: [-11, 100, -40], max: [700, 950, 800], bands: ['R', 'G', 'B'], gamma: 1, opacity: 1}; // true color
+var pal_ps_1 = {min: [-11,-1000,-40], max: [700,5400,900], bands: ['R','N','B'], gamma: 1, opacity: 1}; // green false color 
+var pal_ps_2 = {min: [128,125,208], max: [5750,1400,1700], bands: ['N','R','G'], gamma: 1, opacity: 1}; // red false color
+
+/*
+Map.addLayer(img1, viz_ps, 'PS_2023-06_viz1', false);
+Map.addLayer(img1, viz_ps2, 'PS_2023-06_viz2', false);
+Map.addLayer(img1, viz_ps3, 'PS_2023-06_viz3', true);
+Map.addLayer(img2, viz_ps2, 'PS_2023-12_viz2', false);
+Map.addLayer(img2, viz_ps3, 'PS_2023-12_viz3', false);
+*/
+
+Map.addLayer(img4, pal_ps_0, 'PS_2024-09_viz3', false);
+Map.addLayer(img4, pal_ps_1, 'PS_2024-09_viz3', false);
+Map.addLayer(img4, pal_ps_2, 'PS_2024-09_viz3', true);

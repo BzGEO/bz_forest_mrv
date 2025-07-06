@@ -1,0 +1,92 @@
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Script for visualizing Planet / NICFI monthly and bi-annual mosaics for MESOAMERICA
+// Last updated: 06.03.2024
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/*
+NOTICE: By accessing this script, you agree to the following licensing agreement from Planet,
+including the clause that "all use must be non-commercial or not in the primary pursuit of profit."
+https://assets.planet.com/docs/Planet_ParticipantLicenseAgreement_NICFI.pdf
+
+To access the Planet data for your own use, including downloading or other use in Google Earth Engine, please refer to:
+https://www.planet.com/nicfi/
+
+The imagery included here are a subset of the Americas imagery, which can be accessed from the following:
+https://code.earthengine.google.com/?scriptPath=Examples%3ADatasets%2Fprojects_planet-nicfi_assets_basemaps_americas
+*/
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+var a = require('users/bzgeo/examples:_ancillary/mes');
+var b = require('users/bzgeo/examples:_ancillary/ps_ame');
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+var title = ui.Label("Visor de imágenes de Planet Labs Inc.", {stretch:'horizontal',textAlign:'center',fontWeight:'bold',fontSize:'24px', color: 'gray'});
+var descr = ui.Label("instrucciones: deslice las imágenes y cambie las fechas para compararlas", {stretch:'horizontal',textAlign:'center',fontSize: '14px', color: 'red'});
+var credits = ui.Label("créditos: imágenes © 2024 Planet Labs Inc.", {stretch:'horizontal',textAlign:'center',fontSize: '12px', color: 'gray'});
+
+var viz_lt = {min: 1984,  max: 2023,  palette: ['#9400D3', '#4B0082', '#0000FF', '#00FF00', '#FFFF00', '#FF7F00', '#FF0000']};
+var lt = ee.Image("projects/bz-sdg/x_tmp/lt_defor/mes_forest_loss_lt_nbr_1984_2023_0615_030m").select('yod').clip(a.mes_bnds).visualize(viz_lt);
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// PART 1: SET UP LEFT AND RIGHT PANEL WINDOWS
+// CREATE LEFT MAP
+var leftMap = ui.Map();
+leftMap.setOptions('TERRAIN');
+leftMap.setControlVisibility(true);
+var leftSelector = addLayerSelector(leftMap, 2, 'top-left');
+function addLayerSelector(mapToChange, defaultValue, position) {
+  var label = ui.Label('Escoge imagen para visualizar');
+  function updateMap(selection) {
+    mapToChange.layers().set(0, ui.Map.Layer(b.images_ps[selection],{},"Imágenes Planet (color verdadero)", true));
+    mapToChange.layers().set(1, ui.Map.Layer(b.images_ps_f[selection],{},"Imágenes Planet (color falso)", false));
+    mapToChange.layers().set(2, ui.Map.Layer(b.images_ps_ndvi[selection],{},"Datos NDVI", false));
+    mapToChange.layers().set(3, ui.Map.Layer(lt, {}, "LCC: 1984-2023", false));
+    mapToChange.layers().set(4, ui.Map.Layer(a.pa_mes_ln,{palette: "yellow"},"Áreas protegidas", false));
+    mapToChange.layers().set(5, ui.Map.Layer(a.bnds_intl_ln2,{palette: "white"},"Fronteras internacionales", true));
+    }
+var select = ui.Select({items: Object.keys(b.images_ps), onChange: updateMap});
+  select.setValue(Object.keys(b.images_ps)[defaultValue], true);
+var controlPanel = ui.Panel({widgets: [label, select], style: {position: position}});
+  mapToChange.add(controlPanel);
+}
+// CREATE RIGHT MAP
+var rightMap = ui.Map();
+rightMap.setOptions('TERRAIN');
+rightMap.setControlVisibility(true);
+var rightSelector = addLayerSelector2(rightMap, 52, 'top-right');
+function addLayerSelector2(mapToChange, defaultValue, position) {
+  var label = ui.Label('Escoge imagen para visualizar');
+  function updateMap(selection) {
+    mapToChange.layers().set(0, ui.Map.Layer(b.images_ps[selection],{},"Imágenes Planet (color verdadero)", true));
+    mapToChange.layers().set(1, ui.Map.Layer(b.images_ps_f[selection],{},"Imágenes Planet (color falso)", false));
+    mapToChange.layers().set(2, ui.Map.Layer(b.images_ps_ndvi[selection],{},"Datos NDVI", false));
+    mapToChange.layers().set(3, ui.Map.Layer(lt, {}, "LCC: 1984-2023", false));
+    mapToChange.layers().set(4, ui.Map.Layer(a.pa_mes_ln,{palette: "yellow"},"Áreas protegidas", false));
+    mapToChange.layers().set(5, ui.Map.Layer(a.bnds_intl_ln2,{palette: "white"},"Fronteras internacionales", true));
+    }
+var select = ui.Select({items: Object.keys(b.images_ps), onChange: updateMap});
+  select.setValue(Object.keys(b.images_ps)[defaultValue], true);
+var controlPanel = ui.Panel({widgets: [label, select], style: {position: position}});
+  mapToChange.add(controlPanel);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// PART 2: INITIATE THE SPLIT PANEL
+
+var splitPanel = ui.SplitPanel({firstPanel:leftMap, secondPanel:rightMap, wipe:true, style:{stretch: 'both'}});
+
+ui.root.widgets().reset([title, descr, credits, splitPanel]);
+//ui.root.widgets().reset([splitPanel]);
+ui.root.setLayout(ui.Panel.Layout.Flow('vertical'));
+
+var linker = ui.Map.Linker([leftMap, rightMap]);
+leftMap.setCenter(-88.9329, 13.7207, 9);
+rightMap.setCenter(-88.9329, 13.7207, 9);
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

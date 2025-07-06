@@ -1,0 +1,73 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var CI = ee.FeatureCollection("projects/servir-sco-assets/assets/SCO_CA/BZ_MRV/Mangroves/OnlySI"),
+    CATHALAC = ee.FeatureCollection("projects/servir-sco-assets/assets/SCO_CA/BZ_MRV/Mangroves/OnlyCATHALAC"),
+    Belize = ee.FeatureCollection("projects/servir-sco-assets/assets/SCO_CA/BZ_MRV/aoi_BZ/belize_swbd"),
+    PA = ee.FeatureCollection("projects/servir-sco-assets/assets/SCO_CA/BZ_MRV/aoi_BZ/Belize_Protected_Areas_All"),
+    Watersheds = ee.FeatureCollection("projects/servir-sco-assets/assets/SCO_CA/BZ_MRV/aoi_BZ/Belize_Watersheds"),
+    District = ee.FeatureCollection("projects/servir-sco-assets/assets/SCO_CA/BZ_MRV/aoi_BZ/Belize_Districts"),
+    SERVIR = ee.FeatureCollection("projects/servir-sco-assets/assets/SCO_CA/Publication/SERVIR2017"),
+    pv0x1 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/Publication/bz_sma_control0_con5_yod98_x"),
+    c0 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/Publication/bz_sma_control0_con5_yod99_x"),
+    pv0y1 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/Publication/bz_sma_control0_con8_yod99_x"),
+    c2600 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/Publication/bz_sma_control2600_con5_yod99_x"),
+    pv2600x1 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/Publication/bz_sma_control2600_con5_yod98_x"),
+    pv2600y1 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/Publication/bz_sma_control2600_con8_yod99_x"),
+    c7000 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/Publication/bz_sma_control7000_con5_yod99_x"),
+    pv7000x1 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/Publication/bz_sma_control7000_con5_yod98_x"),
+    pv7000y1 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/Publication/bz_sma_control7000_con8_yod99_x"),
+    c10000 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/Publication/bz_sma_control10000_con5_yod99_x"),
+    pv10000x1 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/Publication/bz_sma_control10000_con5_yod98"),
+    pv10000y1 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/Publication/bz_sma_control10000_con8_yod99_x");
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+var startYear = 2000;
+var endYear = 2024;
+// set visualization dictionaries
+var palette = ['#9400D3', '#4B0082', '#0000FF', '#00FF00', '#FFFF00', '#FF7F00', '#FF0000'];
+var yodVizParms = {
+  min: startYear,
+  max: endYear,
+  palette: palette
+};
+
+Map.centerObject(Belize, 10)
+var SERVIR_outline = ee.Image().byte().paint({featureCollection:SERVIR,width:2});
+Map.addLayer(SERVIR_outline, {palette:'yellow'}, 'SERVIR Mangrove Outline', true);
+Map.addLayer(c0.select('year').updateMask(c0.select('year').gt(2017)).clip(SERVIR), yodVizParms, 'SERVIR c0', false);
+Map.addLayer(pv0x1.select('year').updateMask(pv0x1.select('year').gt(2017)).clip(SERVIR), yodVizParms, 'SERVIR pv0x1', false);
+Map.addLayer(pv0y1.select('year').updateMask(pv0y1.select('year').gt(2017)).clip(SERVIR), yodVizParms, 'SERVIR pv0y1', false);
+Map.addLayer(c2600.select('year').updateMask(c2600.select('year').gt(2017)).clip(SERVIR), yodVizParms, 'SERVIR c2600', false);
+Map.addLayer(pv2600x1.select('year').updateMask(pv2600x1.select('year').gt(2017)).clip(SERVIR), yodVizParms, 'SERVIR pv2600x1', false);
+Map.addLayer(pv2600y1.select('year').updateMask(pv2600y1.select('year').gt(2017)).clip(SERVIR), yodVizParms, 'SERVIR pv2600y1', false);
+Map.addLayer(c7000.select('year').updateMask(c7000.select('year').gt(2017)).clip(SERVIR), yodVizParms, 'SERVIR c7000', false);
+Map.addLayer(pv7000x1.select('year').updateMask(pv7000x1.select('year').gt(2017)).clip(SERVIR), yodVizParms, 'SERVIR pv7000x1', false);
+Map.addLayer(pv7000y1.select('year').updateMask(pv7000y1.select('year').gt(2017)).clip(SERVIR), yodVizParms, 'SERVIR pv7000y1', false);
+Map.addLayer(c10000.select('year').updateMask(c10000.select('year').gt(2017)).clip(SERVIR), yodVizParms, 'SERVIR c10000', false);
+Map.addLayer(pv10000x1.select('year').updateMask(pv10000x1.select('year').gt(2017)).clip(SERVIR), yodVizParms, 'SERVIR pv10000x1', false);
+Map.addLayer(pv10000y1.select('year').updateMask(pv10000y1.select('year').gt(2017)).clip(SERVIR), yodVizParms, 'SERVIR pv10000y1', false);
+
+// Change in Protected Area
+var layer1 = pv10000y1.select('year').clip(SERVIR);
+var layer2 = layer1;
+var layer3 = layer1.clip(PA);
+Map.addLayer(layer2, yodVizParms, 'servirRun', true);
+// print hectare change for each landtrendr run
+var areaCalc = ui.Chart.image.histogram(layer2, SERVIR, 100) // 100m x 100m = 1 hectare
+  .setSeriesNames(['Area disturbed (ha.)'])
+  .setOptions({title: 'Mangrove Area Disturbed based on SERVIR mangrove extent', hAxis: {title: 'Year'}, vAxis: {title: 'Area (hectares)'},
+  series: {0: {color: 'red'}}
+}); 
+print(areaCalc);
+var areaCalc2 = ui.Chart.image.histogram(layer3.clip(PA), PA, 100) // 100m x 100m = 1 hectare
+  .setSeriesNames(['Area disturbed (ha.)'])
+  .setOptions({title: 'Mangrove Area Disturbed based on SERVIR mangrove extent - PA', hAxis: {title: 'Year'}, vAxis: {title: 'Area (hectares)'},
+  series: {0: {color: 'red'}}
+}); 
+print(areaCalc2);
+var PA_outline = ee.Image().byte().paint({featureCollection:PA,width:2});
+Map.addLayer(PA_outline, {palette:'grey'}, 'PA Outline', true);
+var District_outline = ee.Image().byte().paint({featureCollection:District,width:2});
+Map.addLayer(District_outline, {palette:'black'}, 'District Outline', false);
+var Watershed_outline = ee.Image().byte().paint({featureCollection:Watersheds,width:2});
+Map.addLayer(Watershed_outline, {palette:'blue'}, 'Watershed Outline', false);
+
+

@@ -1,0 +1,15 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var BZ_aoi = ee.FeatureCollection("projects/servir-sco-assets/assets/SCO_CA/BZ_MRV/aoi_BZ/belize_swbd"),
+    SERVIR_Mangrove = ee.FeatureCollection("users/servirbz/compil_ecosys/terrestrial/mangrove_cover/bz_mangroves_servir_2019_");
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+//var FullCoverage = ee.FeatureCollection.randomPoints(BZ_aoi, 500);
+var MangroveCoverage = ee.FeatureCollection.randomPoints(SERVIR_Mangrove, 250);
+//Map.addLayer(FullCoverage, {}, 'Full Coverage');
+Map.addLayer(MangroveCoverage, {}, 'SERVIR Mangrove Extent');
+
+// Export.table.toDrive({
+//   collection: MangroveCoverage, 
+//   description: 'mangrove_randompoints', 
+//   folder: 'GEE_exports',
+//   fileFormat: 'CSV', // or SHP
+//   })    

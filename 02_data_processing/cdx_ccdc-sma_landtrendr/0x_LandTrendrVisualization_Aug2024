@@ -1,0 +1,44 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var bz_bounds = ee.FeatureCollection("projects/sica/aoi/limites_nacionales/bz_bounds_swbd"),
+    BZ_2024_High = ee.Image("projects/servir-sco-assets/assets/SCO_CA/BZ_MRV/LandTrendr_BZ/bz_landtrendr_2024High"),
+    BZ_2024_Low = ee.Image("projects/servir-sco-assets/assets/SCO_CA/BZ_MRV/LandTrendr_BZ/bz_landtrendr_2024Low"),
+    BZ_2024_Neutral = ee.Image("projects/servir-sco-assets/assets/SCO_CA/BZ_MRV/LandTrendr_BZ/bz_landtrendr_2024Neutral");
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+Map.centerObject(bz_bounds, 11); // center map around AOI
+
+var palette = ['#9400D3', '#4B0082', '#0000FF', '#00FF00', '#FFFF00', '#FF7F00', '#FF0000'];
+var yodVizParms = {
+  min: 2022,
+  max: 2024,
+  palette: palette
+};
+
+Map.addLayer(BZ_2024_High.select('yod').clip(bz_bounds), yodVizParms, 'OG High', 1); // true = 1; false = 0
+Map.addLayer(BZ_2024_Low.select('yod').clip(bz_bounds), yodVizParms, 'OG Low', 1);
+Map.addLayer(BZ_2024_Neutral.select('yod').clip(bz_bounds), yodVizParms, 'OG Neutral', 1);
+
+// Unmask to distinguish Stable (0) v Disturbance (yod)
+var High_all = BZ_2024_High.unmask();
+var Low_all = BZ_2024_Low.unmask();
+var Neutral_all = BZ_2024_Neutral.unmask();
+
+Map.addLayer(High_all.select('yod').clip(bz_bounds), {min: 0, max: 2024, palette: ['white', 'red']}, 'High with Stable', 1); // true = 1; false = 0
+Map.addLayer(Low_all.select('yod').clip(bz_bounds), {min: 0, max: 2024, palette: ['white', 'lightblue']}, 'Low with Stable', 1);
+Map.addLayer(Neutral_all.select('yod').clip(bz_bounds), {min: 0, max: 2024, palette: ['white', 'lightgreen']}, 'Neutral with Stable', 1);
+
+// Extract disturbance data by year // LandTrendr band ('yod') ; CCDC-SMA band ('year') // change algorithm output here
+var High2023 = BZ_2024_High.updateMask(BZ_2024_High.select('yod').eq(2023));
+var High2024 = BZ_2024_High.updateMask(BZ_2024_High.select('yod').eq(2024));
+var Low2023 = BZ_2024_Low.updateMask(BZ_2024_Low.select('yod').eq(2023));
+var Low2024 = BZ_2024_Low.updateMask(BZ_2024_Low.select('yod').eq(2024));
+var Neutral2023 = BZ_2024_Neutral.updateMask(BZ_2024_Neutral.select('yod').eq(2023));
+var Neutral2024 = BZ_2024_Neutral.updateMask(BZ_2024_Neutral.select('yod').eq(2024));
+
+// Add disturbance maps to viewer // change algorithm output here
+Map.addLayer(High2023.select('yod').clip(bz_bounds), {palette: ['red']}, 'High 2023', 1); // true = 1; false = 0
+Map.addLayer(High2024.select('yod').clip(bz_bounds), {palette: ['blue']}, 'High 2024', 1);
+Map.addLayer(Low2023.select('yod').clip(bz_bounds), {palette: ['orange']}, 'Low 2023', 1);
+Map.addLayer(Low2024.select('yod').clip(bz_bounds), {palette: ['purple']}, 'Low 2024', 1);
+Map.addLayer(Neutral2023.select('yod').clip(bz_bounds), {palette: ['yellow']}, 'Neutral 2023', 1);
+Map.addLayer(Neutral2024.select('yod').clip(bz_bounds), {palette: ['green']}, 'Neutral 2024', 1);
+

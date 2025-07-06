@@ -1,0 +1,32 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var aoi = 
+    /* color: #d63000 */
+    /* shown: false */
+    /* displayProperties: [
+      {
+        "type": "rectangle"
+      }
+    ] */
+    ee.Geometry.Polygon(
+        [[[-89.58221639014106, 13.90093966491157],
+          [-89.58221639014106, 13.822275149783737],
+          [-89.51011861182074, 13.822275149783737],
+          [-89.51011861182074, 13.90093966491157]]], null, false);
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+// Last updated: 23.04.2024
+
+function s2(day) {return ee.ImageCollection("COPERNICUS/S2_SR_HARMONIZED")
+      .select(['B2','B3','B4','B8','B11','B12'],['B1','B2','B3','B4','B5','B7'])
+      .filterBounds(aoi).filterDate(ee.Date(day).advance(-1, 'day'), ee.Date(day).advance(1, 'day'))
+      .median().clip(aoi)}
+
+var viz_s2_321 = {bands: ['B3', 'B2', 'B1'], min: [-170, 48, 70], max:[1000, 835, 588]};
+var viz_s2_543 = {bands: ['B5', 'B4', 'B1'], min: [730, -1400, 70], max:[2200, 4000, 588]};
+
+Map.centerObject(aoi, 13);
+Map.addLayer(s2('2024-01-24'), viz_s2_321, 'S2_2024-01-24 true color', false);
+Map.addLayer(s2('2024-01-24'), viz_s2_543, 'S2_2024-01-24 false color', false);
+Map.addLayer(s2('2024-02-28'), viz_s2_321, 'S2_2024-02-28 true color', true);
+Map.addLayer(s2('2024-02-28'), viz_s2_543, 'S2_2024-02-28 false color', false);
+Map.addLayer(s2('2024-03-09'), viz_s2_321, 'S2_2024-03-09 true color', false);
+Map.addLayer(s2('2024-03-09'), viz_s2_543, 'S2_2024-03-09 false color', false);

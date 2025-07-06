@@ -1,0 +1,67 @@
+// Extract GFW data for Belize
+// author: Christine Evans, SERVIR Science Coordination Office (cae004@uah.edu)
+// last modified: 03 October 2023
+
+// Set the map & ROI
+// var roi = ee.FeatureCollection("USDOS/LSIB_SIMPLE/2017").filter(ee.Filter.inList('country_na', ['Belize']));
+// var roi = ee.FeatureCollection("USDOS/LSIB_SIMPLE/2017").filter(ee.Filter.inList('country_na', ['Guatemala']));
+// var roi = ee.FeatureCollection("USDOS/LSIB_SIMPLE/2017").filter(ee.Filter.inList('country_na', ['El Salvador']));
+// var roi = ee.FeatureCollection("USDOS/LSIB_SIMPLE/2017").filter(ee.Filter.inList('country_na', ['Costa Rica']));
+// var roi = ee.FeatureCollection("USDOS/LSIB_SIMPLE/2017").filter(ee.Filter.inList('country_na', ['Panama']));
+//var roi = ee.FeatureCollection("USDOS/LSIB_SIMPLE/2017").filter(ee.Filter.inList('country_na', ['Honduras']));
+var roi = ee.FeatureCollection("projects/servir-sco-assets/assets/SCO_CA/BZ_MRV/aoi_BZ/CentralAmerica");
+var bz_bmp_mpr = /* color: #ff1806 */ee.Geometry.Polygon(
+        [[[-89.05862015218591, 17.278416007090847],
+          [-89.05862015218591, 16.845176431155156],
+          [-88.73109024495935, 16.845176431155156],
+          [-88.73109024495935, 17.278416007090847]]], null, false);
+var outlineROI = ee.Image().byte().paint({featureCollection:roi,width:2});
+var outlinePineRidge = ee.Image().byte().paint({featureCollection:bz_bmp_mpr,width:3});
+Map.setOptions('satellite');
+Map.centerObject(bz_bmp_mpr, 10);
+Map.addLayer(outlineROI,{palette: "black"},'ROI', true);
+
+var base2000 = ee.Image('UMD/hansen/global_forest_change_2022_v1_10').select('treecover2000').clip(roi);
+var canopy_perc = 30; // According to Colombia's FREL
+var forest_def = base2000.gt(canopy_perc).updateMask(base2000.select("treecover2000").gt(canopy_perc)).clip(roi);
+Map.addLayer(forest_def, {palette:['green']}, 'tree cover 2000');
+
+var Change = ee.Image('UMD/hansen/global_forest_change_2022_v1_10').select('lossyear').clip(roi);
+var treeLossVisParam = {bands: ['lossyear'],min: 0, max: 22,  palette: ['yellow', 'red']};
+Map.addLayer(Change, {min: 0, max: 22,  palette: ['yellow', 'red']}, 'tree loss year');
+
+var Lossdataset2010 = Change.select('lossyear').eq(10).clip(roi);
+var Loss2010 = Change.updateMask(Lossdataset2010);
+Map.addLayer(Loss2010, {palette: "red"},'Loss 2010', true);
+
+var ForestLoss= ui.Chart.image.histogram({image: Lossdataset2010.clip(roi),
+                                          region: roi,
+                                          scale: 100,
+                                          // maxBuckets: 100,
+                                          // minBucketWidth: 50,
+                                          // maxRaw: 500,
+                                          maxPixels: 1e13})
+                                          .setSeriesNames(['Area (ha.)'])
+                                          .setOptions({title: 'GFW Forest Coverage, 2000-2021', 
+                                          hAxis: {title: 'Binary Classification'}, 
+                                          vAxis: {title: 'Area (hectares)'}}); 
+print(ForestLoss);
+
+var SpawnBiomass = ee.ImageCollection("NASA/ORNL/biomass_carbon_density/v1").select('agb').mean().clip(roi);
+Map.addLayer(SpawnBiomass,{min: -50, max: 80, palette: ['d9f0a3', 'addd8e', '78c679', '41ab5d', '238443', '005a32']},'Above Ground Biomass');
+
+var AGB_mask = SpawnBiomass.mask(Lossdataset2010)
+var AGB_masked = SpawnBiomass.updateMask(AGB_mask);
+
+var visualization = {min: -50, max: 80, palette: ['d9f0a3', 'addd8e', '78c679', '41ab5d', '238443', '005a32']};
+// Clip to extent of change 
+Map.addLayer(AGB_masked, visualization, "AGB", false);
+
+// Average to get Total Carbon Emissions for the regions
+var Activity_AGB = AGB_masked.reduceRegion({reducer: ee.Reducer.mean(), scale: 100, geometry: roi,maxPixels: 1e9});
+print(Activity_AGB);
+
+Map.addLayer(outlinePineRidge,{palette: "black"},'Pine Ridge', true);
+
+
+

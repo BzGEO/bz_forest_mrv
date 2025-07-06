@@ -1,0 +1,10 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var img = ee.Image("projects/bz-sdg/compil_imagery/optical/landsat_ft/mes_landsat_boa_fitted_r70_2023_0921_030m");
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+// Last modified: 25 Sept. 2023
+
+//Map.centerObject(img, 9);
+Map.setCenter(-88.7689, 17.2469,10);
+Map.addLayer(img, {bands: ['B5', 'B4', 'B3'], min: [730, 1800, -740], max:[2200, 3800, 2000]}, 'Landsat_2023_viz1', true);
+Map.addLayer(img, {bands: ['B5', 'B4', 'B3'], min: 100, max: 4000}, 'Landsat_2023_viz2', false);
+Map.addLayer(img, {bands: ['B5', 'B4', 'B3'], min: [900, 2700, 145], max:[2800, 3600, 800]}, 'Landsat_2023_viz3', false);

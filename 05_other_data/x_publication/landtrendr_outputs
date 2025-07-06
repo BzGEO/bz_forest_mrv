@@ -1,0 +1,109 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var Belize = ee.FeatureCollection("projects/servir-sco-assets/assets/SCO_CA/BZ_MRV/aoi_BZ/belize_swbd"),
+    MMU11 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/Publication/LandTrendr/bz_landtrendr_control"),
+    MMU5 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/Publication/LandTrendr/bz_landtrendr_control_mmu5"),
+    MMU1 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/Publication/LandTrendr/bz_landtrendr_control_mmu1"),
+    MS4 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/Publication/LandTrendr/bz_landtrendr_maxsegments4"),
+    MS6 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/Publication/LandTrendr/bz_landtrendr_maxsegments6"),
+    MS12 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/Publication/LandTrendr/bz_landtrendr_maxsegments12"),
+    RT025 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/Publication/LandTrendr/bz_landtrendr_recoverythreshold_025"),
+    RT05 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/Publication/LandTrendr/bz_landtrendr_recoverythreshold_05"),
+    RT075 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/Publication/LandTrendr/bz_landtrendr_recoverythreshold_075"),
+    BMP05 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/Publication/LandTrendr/bz_landtrendr_bestmodelproportion_05"),
+    BMP1 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/Publication/LandTrendr/bz_landtrendr_bestmodelproportion_1"),
+    BMP125 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/Publication/LandTrendr/bz_landtrendr_bestmodelproportion_125"),
+    BestComboLoss = ee.Image("projects/servir-sco-assets/assets/SCO_CA/Publication/LandTrendr/bz_landtrendr_ms4rt5bmp1mmu1"),
+    SERVIR17 = ee.FeatureCollection("projects/servir-sco-assets/assets/SCO_CA/Publication/Boundaries/SERVIR2017"),
+    BestComboGain = ee.Image("projects/servir-sco-assets/assets/SCO_CA/Publication/LandTrendr/bz_landtrendr_ms4rt5bmp1mmu1_gain"),
+    gain_overlap = ee.Image("projects/servir-sco-assets/assets/SCO_CA/Publication/LandTrendr/gain_yr_og1"),
+    loss_overlap = ee.Image("projects/servir-sco-assets/assets/SCO_CA/Publication/LandTrendr/loss_yr_og1");
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+// var point = ee.Geometry.Point(-88.35879452, 16.54316401);
+// Map.addLayer(point);
+// Map.setCenter(-88.35879452, 16.54316401, 15);
+// //var GMW = ee.Image("projects/sat-io/open-datasets/GMW/extent/GMW_V3/gmw_v3_2020").unmask(0).clip(Belize);
+var startYear = 2000;
+var endYear = 2024;
+// // set visualization dictionaries
+var palette = ['#9400D3', '#4B0082', '#0000FF', '#00FF00', '#FFFF00', '#FF7F00', '#FF0000'];
+var yodVizParms = {
+  min: startYear,
+  max: endYear,
+  palette: palette
+};
+// //var featureCollection = ee.FeatureCollection([Belize]);
+// var bzforest = ee.Image('projects/servir-sco-assets/assets/SCO_CA/BZ_MRV/ForestMask_BZ/bz_fc_svr_2000');
+// // Export the FeatureCollection.
+
+// //Map.centerObject(Belize, 10)
+// var SERVIR_outline = ee.Image().byte().paint({featureCollection:SERVIR17,width:2});
+//var CI_outline = ee.Image().byte().paint({featureCollection:CI,width:2});
+//var CATHALAC_outline = ee.Image().byte().paint({featureCollection:CATHALAC,width:2});
+//var GMW_outline = ee.Image().byte().paint({featureCollection:Belize,width:2});
+// Adding Planet NICFI data to confirm disturbances | Filter basemaps by date and get the first image from filtered results
+var nicfi = ee.ImageCollection("projects/planet-nicfi/assets/basemaps/americas");
+var pal_ps_vis = {"bands":["R","G","B"],"min":64,"max":5454,"gamma":1.8};
+// // Filter basemaps by date and get the first image from filtered results
+// var basemap2018 = nicfi.filter(ee.Filter.date('2018-01-01','2018-12-31')).filterBounds(Belize).median();
+// var basemap2019 = nicfi.filter(ee.Filter.date('2019-01-01','2019-12-31')).filterBounds(Belize).median();
+var basemap2020 = nicfi.filter(ee.Filter.date('2020-01-01','2020-12-31')).filterBounds(Belize).median();
+var basemap2021 = nicfi.filter(ee.Filter.date('2021-01-01','2021-04-30')).filterBounds(Belize).median();
+var basemap2022 = nicfi.filter(ee.Filter.date('2022-01-01','2022-04-30')).filterBounds(Belize).median();
+var basemap2023 = nicfi.filter(ee.Filter.date('2023-01-01','2023-04-30')).filterBounds(Belize).median();
+var basemap2024 = nicfi.filter(ee.Filter.date('2024-01-01','2024-04-30')).filterBounds(Belize).median();
+// Map.addLayer(basemap2018.clip(Belize), pal_ps_vis, '2018 mosaic', 0); // true = 1; false = 0
+// Map.addLayer(basemap2019.clip(Belize), pal_ps_vis, '2019 mosaic', 0);
+Map.addLayer(basemap2020.clip(Belize), pal_ps_vis, '2020 mosaic', 0);
+Map.addLayer(basemap2021.clip(Belize), pal_ps_vis, '2021 mosaic', 0);
+Map.addLayer(basemap2022.clip(Belize), pal_ps_vis, '2022 mosaic', 0);
+Map.addLayer(basemap2023.clip(Belize), pal_ps_vis, '2023 mosaic', 0);
+Map.addLayer(basemap2024.clip(Belize), pal_ps_vis, '2024 mosaic', 0);
+
+
+// Map.addLayer(SERVIR_outline, {palette:'green'}, 'SERVIR Mangrove Outline', true)
+// Map.addLayer(CI_outline, {palette:'white'}, 'SI Mangrove Outline', false)
+// Map.addLayer(CATHALAC_outline, {palette:'red'}, 'CATHALAC Mangrove Outline', false)
+// Map.addLayer(GMW_outline, {palette:'blue'}, 'GMW Mangrove Outline', false)
+
+Map.addLayer(loss_overlap.select('b1').clip(SERVIR17), yodVizParms, 'SERVIR loss', true);
+Map.addLayer(gain_overlap.select('b1').clip(SERVIR17), yodVizParms, 'SERVIR gain', true);
+// Map.addLayer(MMU5.select('yod').updateMask(MMU5.select('yod').gt(2017)).clip(SERVIR17), yodVizParms, 'SERVIR MMU5', true);
+// Map.addLayer(BMP05.select('yod').updateMask(MMU11.select('yod').gt(2017)).clip(SERVIR17), yodVizParms, 'SERVIR BMP05', true);
+// Map.addLayer(BMP1.select('yod').updateMask(MMU1.select('yod').gt(2017)).clip(SERVIR17), yodVizParms, 'SERVIR BMP1', true);
+// Map.addLayer(BMP125.select('yod').updateMask(MMU5.select('yod').gt(2017)).clip(SERVIR17), yodVizParms, 'SERVIR BMP125', true);
+// Map.addLayer(RT025.select('yod').updateMask(MMU11.select('yod').gt(2017)).clip(SERVIR17), yodVizParms, 'SERVIR RT25', true);
+// Map.addLayer(RT075.select('yod').updateMask(MMU1.select('yod').gt(2017)).clip(SERVIR17), yodVizParms, 'SERVIR RT75', true);
+// Map.addLayer(RT05.select('yod').updateMask(MMU5.select('yod').gt(2017)).clip(SERVIR17), yodVizParms, 'SERVIR RT05', true);
+// Map.addLayer(MS12.select('yod').updateMask(MMU11.select('yod').gt(2017)).clip(SERVIR17), yodVizParms, 'SERVIR MS12', true);
+// Map.addLayer(MS4.select('yod').updateMask(MMU1.select('yod').gt(2017)).clip(SERVIR17), yodVizParms, 'SERVIR MS4', true);
+// Map.addLayer(MS6.select('yod').updateMask(MMU5.select('yod').gt(2017)).clip(SERVIR17), yodVizParms, 'SERVIR MS6', true);
+Map.addLayer(BestComboLoss.select('yod').updateMask(BestComboLoss.select('yod').gt(2017)).clip(SERVIR17), yodVizParms, 'SERVIR BCL', true);
+//var gains = BestComboGain.select('yod');
+// var areaCalc = ui.Chart.image.histogram(BestComboGain.select('yod').updateMask(BestComboGain.select('yod').gt(2017)), SERVIR17, 100) // 100m x 100m = 1 hectare
+//   .setSeriesNames(['Area disturbed (ha.)'])
+//   .setOptions({title: 'Mangrove Area Gain', hAxis: {title: 'Year'}, vAxis: {title: 'Area (hectares)'},
+//   series: {0: {color: 'red'}}
+// }); 
+// print(areaCalc);
+// Map.addLayer(PermitPoints, {}, 'permits');
+// Map.addLayer(SurveyPoints, {}, 'survey');
+var aoi = 
+    /* color: #d63000 */
+    /* displayProperties: [
+      {
+        "type": "rectangle"
+      }
+    ] */
+    ee.Geometry.Polygon(
+        [[[-89.46126065920917, 18.646695073445468],
+          [-89.46126065920917, 15.771566153438261],
+          [-87.65950284670917, 15.771566153438261],
+          [-87.65950284670917, 18.646695073445468]]], null, false);
+Export.image.toDrive({
+  image: BestComboGain.select('yod'), 
+  description: 'bz_landtrendr_ms4rt5bmp1mmu1_gain', 
+  region: aoi, 
+  scale: 30, 
+  maxPixels: 1e13
+});
+

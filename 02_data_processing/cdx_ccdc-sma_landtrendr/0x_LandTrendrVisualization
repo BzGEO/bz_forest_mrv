@@ -1,0 +1,42 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var bz_bmp_mpr = 
+    /* color: #ff1806 */
+    /* shown: false */
+    ee.Geometry.Polygon(
+        [[[-89.05862015218591, 17.278416007090847],
+          [-89.05862015218591, 16.845176431155156],
+          [-88.73109024495935, 16.845176431155156],
+          [-88.73109024495935, 17.278416007090847]]], null, false),
+    High_LT = ee.Image("projects/servir-sco-assets/assets/SCO_CA/BZ_MRV/LandTrendr_BZ/CentralAmerica_HighThreshold_DrySeason_19842023_NBR"),
+    Low_LT = ee.Image("projects/servir-sco-assets/assets/SCO_CA/BZ_MRV/LandTrendr_BZ/CentralAmerica_LowThreshold_DrySeason_19842023_NBR"),
+    Neutral_LT = ee.Image("projects/servir-sco-assets/assets/SCO_CA/BZ_MRV/LandTrendr_BZ/CentralAmerica_NeutralThreshold_DrySeason_19842023_NBR");
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+Map.centerObject(bz_bmp_mpr, 11); // center map around AOI
+
+var outline = ee.Image().byte().paint({featureCollection:bz_bmp_mpr,width:2});
+Map.addLayer(outline)
+// set visualization dictionaries
+var startYear = 1984; // output start year
+var endYear = 2023; // output end year
+
+// visualization pulled from LandTrendr code
+
+var palette = ['#9400D3', '#4B0082', '#0000FF', '#00FF00', '#FFFF00', '#FF7F00', '#FF0000'];
+var yodVizParms = {
+  min: startYear,
+  max: endYear,
+  palette: palette
+};
+
+var magVizParms = {
+  min: 200,
+  max: 800,
+  palette: palette
+};
+
+// display the change attribute map - note that there are other layers - print changeImg to console to see all
+// can display 'yod', 'mag', 'dur', 'preval', 'rate', 'dsnr'
+
+Map.addLayer(High_LT.select(['yod']), yodVizParms, 'Change Detected'); // Swap in threshold run of choice
+
+

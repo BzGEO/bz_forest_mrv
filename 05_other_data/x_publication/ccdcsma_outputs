@@ -1,0 +1,96 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var MMU11 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/Publication/bz_landtrendr_control"),
+    MMU1 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/Publication/bz_landtrendr_control_mmu1"),
+    MMU5 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/Publication/bz_landtrendr_control_mmu5"),
+    SERVIR = ee.FeatureCollection("projects/servir-sco-assets/assets/SCO_CA/BZ_MRV/Mangroves/OnlySERVIR"),
+    CI = ee.FeatureCollection("projects/servir-sco-assets/assets/SCO_CA/BZ_MRV/Mangroves/OnlySI"),
+    CATHALAC = ee.FeatureCollection("projects/servir-sco-assets/assets/SCO_CA/BZ_MRV/Mangroves/OnlyCATHALAC"),
+    Belize = ee.FeatureCollection("projects/servir-sco-assets/assets/SCO_CA/BZ_MRV/aoi_BZ/belize_swbd"),
+    BMP05 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/Publication/bz_landtrendr_bestmodelproportion_05"),
+    BMP1 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/Publication/bz_landtrendr_bestmodelproportion_1"),
+    BMP125 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/Publication/bz_landtrendr_bestmodelproportion_125"),
+    MS12 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/Publication/bz_landtrendr_maxsegments12"),
+    MS4 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/Publication/bz_landtrendr_maxsegments4"),
+    MS6 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/Publication/bz_landtrendr_maxsegments6"),
+    RT25 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/Publication/bz_landtrendr_recoverythreshold_025"),
+    RT05 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/Publication/bz_landtrendr_recoverythreshold_05"),
+    RT75 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/Publication/bz_landtrendr_recoverythreshold_075"),
+    Agreement = ee.FeatureCollection("projects/servir-sco-assets/assets/SCO_CA/BZ_MRV/Mangroves/Agreement_ALL");
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+// Export.image.toDrive({
+//   image: RT25.select('yod'),
+//   description: 'RT25_SERVIR',
+//   folder: 'SERVIR_Mangroves',
+//   region: SERVIR,
+//   scale: 30,
+// });
+// Export.image.toDrive({
+//   image: RT05.select('yod'),
+//   description: 'RT05_SERVIR',
+//   folder: 'SERVIR_Mangroves',
+//   region: SERVIR,
+//   scale: 30,
+// });
+// Export.image.toDrive({
+//   image:RT75.select('yod'),
+//   description: 'RT75_SERVIR',
+//   folder: 'SERVIR_Mangroves',
+//   region: SERVIR,
+//   scale: 30,
+// });
+var GMW = ee.Image("projects/sat-io/open-datasets/GMW/extent/GMW_V3/gmw_v3_2020").unmask(0).clip(Belize);
+var startYear = 2000;
+var endYear = 2024;
+// set visualization dictionaries
+var palette = ['#9400D3', '#4B0082', '#0000FF', '#00FF00', '#FFFF00', '#FF7F00', '#FF0000'];
+var yodVizParms = {
+  min: startYear,
+  max: endYear,
+  palette: palette
+};
+Map.centerObject(Belize, 10)
+var SERVIR_outline = ee.Image().byte().paint({featureCollection:SERVIR,width:2});
+var CI_outline = ee.Image().byte().paint({featureCollection:CI,width:2});
+var CATHALAC_outline = ee.Image().byte().paint({featureCollection:CATHALAC,width:2});
+//var GMW_outline = ee.Image().byte().paint({featureCollection:GMW,width:2});
+
+// Adding Planet NICFI data to confirm disturbances | Filter basemaps by date and get the first image from filtered results
+var nicfi = ee.ImageCollection("projects/planet-nicfi/assets/basemaps/americas");
+var pal_ps_vis = {"bands":["R","G","B"],"min":64,"max":5454,"gamma":1.8};
+// Filter basemaps by date and get the first image from filtered results
+var basemap2018 = nicfi.filter(ee.Filter.date('2018-01-01','2018-12-31')).filterBounds(Belize).median();
+var basemap2019 = nicfi.filter(ee.Filter.date('2019-01-01','2019-12-31')).filterBounds(Belize).median();
+var basemap2020 = nicfi.filter(ee.Filter.date('2020-01-01','2020-12-31')).filterBounds(Belize).median();
+var basemap2021 = nicfi.filter(ee.Filter.date('2021-01-01','2021-04-30')).filterBounds(Belize).median();
+var basemap2022 = nicfi.filter(ee.Filter.date('2022-01-01','2022-04-30')).filterBounds(Belize).median();
+var basemap2023 = nicfi.filter(ee.Filter.date('2023-01-01','2023-04-30')).filterBounds(Belize).median();
+var basemap2024 = nicfi.filter(ee.Filter.date('2024-01-01','2024-04-30')).filterBounds(Belize).median();
+Map.addLayer(basemap2018.clip(Belize), pal_ps_vis, '2018 mosaic', 0); // true = 1; false = 0
+Map.addLayer(basemap2019.clip(Belize), pal_ps_vis, '2019 mosaic', 0);
+Map.addLayer(basemap2020.clip(Belize), pal_ps_vis, '2020 mosaic', 0);
+Map.addLayer(basemap2021.clip(Belize), pal_ps_vis, '2021 mosaic', 0);
+Map.addLayer(basemap2022.clip(Belize), pal_ps_vis, '2022 mosaic', 0);
+Map.addLayer(basemap2023.clip(Belize), pal_ps_vis, '2023 mosaic', 0);
+Map.addLayer(basemap2024.clip(Belize), pal_ps_vis, '2024 mosaic', 0);
+
+
+Map.addLayer(SERVIR_outline, {palette:'yellow'}, 'SERVIR Mangrove Outline', true)
+Map.addLayer(CI_outline, {palette:'white'}, 'SI Mangrove Outline', false)
+Map.addLayer(CATHALAC_outline, {palette:'red'}, 'CATHALAC Mangrove Outline', false)
+Map.addLayer(GMW, {palette:'blue'}, 'GMW Mangrove Outline', false)
+
+Map.addLayer(MMU11.select('yod').updateMask(MMU11.select('yod').gt(2017)).clip(SERVIR), yodVizParms, 'SERVIR MMU11', true);
+Map.addLayer(MMU1.select('yod').updateMask(MMU1.select('yod').gt(2017)).clip(SERVIR), yodVizParms, 'SERVIR MMU1', true);
+Map.addLayer(MMU5.select('yod').updateMask(MMU5.select('yod').gt(2017)).clip(SERVIR), yodVizParms, 'SERVIR MMU5', true);
+Map.addLayer(BMP05.select('yod').updateMask(MMU11.select('yod').gt(2017)).clip(SERVIR), yodVizParms, 'SERVIR BMP05', true);
+Map.addLayer(BMP1.select('yod').updateMask(MMU1.select('yod').gt(2017)).clip(SERVIR), yodVizParms, 'SERVIR BMP1', true);
+Map.addLayer(BMP125.select('yod').updateMask(MMU5.select('yod').gt(2017)).clip(SERVIR), yodVizParms, 'SERVIR BMP125', true);
+Map.addLayer(RT25.select('yod').updateMask(MMU11.select('yod').gt(2017)).clip(SERVIR), yodVizParms, 'SERVIR RT25', true);
+Map.addLayer(RT75.select('yod').updateMask(MMU1.select('yod').gt(2017)).clip(SERVIR), yodVizParms, 'SERVIR RT75', true);
+Map.addLayer(RT05.select('yod').updateMask(MMU5.select('yod').gt(2017)).clip(SERVIR), yodVizParms, 'SERVIR RT05', true);
+Map.addLayer(MS12.select('yod').updateMask(MMU11.select('yod').gt(2017)).clip(SERVIR), yodVizParms, 'SERVIR MS12', true);
+Map.addLayer(MS4.select('yod').updateMask(MMU1.select('yod').gt(2017)).clip(SERVIR), yodVizParms, 'SERVIR MS4', true);
+Map.addLayer(MS6.select('yod').updateMask(MMU5.select('yod').gt(2017)).clip(SERVIR), yodVizParms, 'SERVIR MS6', true);
+
+
+

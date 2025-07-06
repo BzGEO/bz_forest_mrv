@@ -1,0 +1,99 @@
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Displays specific Belize Landsat-5, Landsat-7, Landsat-8, and Sentinel-2 scenes
+// Last update: 4 Aug. 2024
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Loads packages required for visualizing data
+var a = require('users/servirbz/packages:gapfill_l7_bz'); // Landsat-7 gap-filling package
+var b = require('users/servirbz/packages:bz/bz'); // miscellaneous Belize datasets
+var c = require('users/servirbz/packages:img_optical_landsat_mosaic_bz'); // loads modified image collections
+var d = require('users/bzgeo/examples:_ancillary/mes'); 
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Adds L5, L7, L8, S2 images from 1987 through 2024
+Map.addLayer(c.l5('1987-03-25'), c.viz2_landsat_543, 'L5_1987-03-25', false);
+Map.addLayer(c.l5('1989-12-27'), c.viz2_landsat_543, 'L5_1989-12-27', false);
+Map.addLayer(c.l5('1993-04-10'), c.viz2_landsat_543, 'L5_1993-04-10', false);
+Map.addLayer(c.l5('1994-03-28'), c.viz2_landsat_543, 'L5_1994-03-28', false);
+Map.addLayer(c.l5('1995-02-11'), c.viz2_landsat_543, 'L5_1995-02-11', false);
+Map.addLayer(c.l5('1995-05-18'), c.viz2_landsat_543, 'L5_1995-05-18', false);
+Map.addLayer(c.l5('1996-03-17'), c.viz2_landsat_543, 'L5_1996-03-17', false);
+Map.addLayer(c.l5('1998-05-10'), c.viz2_landsat_543, 'L5_1998-05-10', false);
+
+Map.addLayer(c.l5('2000-01-24'), c.viz2_landsat_543, 'L5_2000-01-24', false);
+Map.addLayer(c.l5('2000-03-28'), c.viz2_landsat_543, 'L5_2000-03-28', false);
+Map.addLayer(a.gapfill_sr2('2004-01-27'), c.viz2_landsat_543, 'L7_2004-01-27', false);
+Map.addLayer(a.gapfill_sr2('2004-02-12'), c.viz2_landsat_543, 'L7_2004-02-12', false);
+Map.addLayer(a.gapfill_sr2('2007-05-11'), c.viz2_landsat_543, 'L7_2007-05-11', false);
+Map.addLayer(a.gapfill_sr2('2008-11-05'), c.viz2_landsat_543, 'L7_2008-11-05', false);
+Map.addLayer(a.gapfill_sr2('2008-11-21'), c.viz2_landsat_543, 'L7_2008-11-21', false);
+Map.addLayer(a.gapfill_sr2('2009-04-14'), c.viz2_landsat_543, 'L7_2009-04-14', false);
+Map.addLayer(a.gapfill_sr2('2010-01-11'), c.viz2_landsat_543, 'L7_2010-01-11', false);
+Map.addLayer(a.gapfill_sr2('2010-02-12'), c.viz2_landsat_543, 'L7_2010-02-12', false);
+Map.addLayer(a.gapfill_sr2('2010-02-28'), c.viz2_landsat_543, 'L7_2010-02-28', false);
+Map.addLayer(a.gapfill_sr2('2012-05-08'), c.viz2_landsat_543, 'L7_2012-05-08', false);
+Map.addLayer(a.gapfill_sr2('2013-03-24'), c.viz2_landsat_543, 'L7_2013-03-24', false);
+Map.addLayer(a.gapfill_sr2('2014-12-24'), c.viz2_landsat_543, 'L7_2014-12-24', false);
+Map.addLayer(c.l8('2017-02-23'), c.viz2_landsat_543, 'L8_2017-02-23', false);
+Map.addLayer(a.gapfill_dn('2019-03-25'), c.viz2_landsat_543, 'L7_2019-03-25', false);
+Map.addLayer(c.s2_bz('2019-04-20'), c.viz_s2_543, 'S2_2019-04-20', false);
+
+Map.addLayer(c.l8('2020-04-20'), c.viz2_landsat_543, 'L8_2020-04-20', false);
+Map.addLayer(c.s2_bz('2020-04-24'), c.viz_s2_543, 'S2_2020-04-24', false);
+Map.addLayer(c.s2_bz('2020-05-24'), c.viz_s2_543, 'S2_2020-05-24', false);
+Map.addLayer(c.s2_bz('2021-02-03'), c.viz_s2_543, 'S2_2021-02-03', false);
+Map.addLayer(c.s2_bz('2021-10-31'), c.viz_s2_543, 'S2_2021-10-31', false);
+Map.addLayer(a.gapfill_sr2('2021-11-09'), c.viz2_landsat_543, 'L7_2021-11-09', false);
+Map.addLayer(a.gapfill_sr2('2021-12-27'), c.viz2_landsat_543, 'L7_2021-12-27', false);
+Map.addLayer(c.l9("2023-01-15"), c.viz_landsat_543, 'L9_2023-01-15', false);
+Map.addLayer(c.l8("2023-04-29"), c.viz_landsat_543, 'L8_2023-04-29', false);
+Map.addLayer(c.l9("2023-06-08"), c.viz_landsat_543, 'L9_2023-06-08', false);
+Map.addLayer(c.s2_bz('2023-06-08'), c.viz_s2_543, 'S2_2023-06-08', false);
+
+Map.addLayer(c.s2_bz('2024-01-09'), c.viz_s2_543, 'S2_2024-01-09', false);
+Map.addLayer(c.l8("2024-02-11"), c.viz_landsat_543, 'L8_2024-02-11', false);
+Map.addLayer(c.l9("2024-03-22"), c.viz_landsat_543, 'L9_2024-03-22', false);
+Map.addLayer(c.l8("2024-05-17"), c.viz_landsat_543, 'L8_2024-05-17', true);
+Map.addLayer(c.s2_bz('2024-05-18'), c.viz_s2_543, 'S2_2024-05-18', false);
+Map.addLayer(c.s2_bz('2024-05-23'), c.viz_s2_543, 'S2_2024-05-23', false);
+Map.addLayer(c.s2_bz('2024-05-28'), c.viz_s2_543, 'S2_2024-05-28', false);
+Map.addLayer(c.l9("2024-06-10"), c.viz_landsat_543, 'L9_2024-06-10', false);
+
+// Adds base layers on top of imagery
+Map.addLayer(b.bz_cbc_,{palette: "red"},'Maya Belize Corridor', 0); // adds Central BZ Corridor in red outline
+Map.addLayer(d.pa_bz_ln.clip(d.roi_bz),{palette: "yellow"},"Prot. areas", 0);
+Map.addLayer(b.bnds_w2.clip(b.bz),{palette: "black"},"Int'l Borders", 1); // adds country borders w/ black outline
+Map.centerObject(b.bz_cbc, 8);
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+var text1 = ui.Label({value: 'This app displays Landsat and Sentinel-2 imagery of Belize',
+                      style: {position: 'middle-left', width: '400px', whiteSpace: 'pre-wrap', fontWeight: 'bold', fontSize: '14px'},});
+var text2 = ui.Label({value: 'data credits: Landsat data from NASA, USGS; Sentinel data from Copernicus / European Space Agency',
+                      style: {position: 'bottom-left', width: '400px', whiteSpace: 'pre-wrap', fontSize: '12px'},});
+var close_button = ui.Button({label: 'X', style: {position: 'top-right', color: 'red', fontWeight: 'bold'},});
+var dialog_box = ui.Panel({layout: ui.Panel.Layout.absolute(),widgets: [close_button, text1, text2],style: {width: '420px', height: '160px'},});
+Map.add(dialog_box);
+close_button.onClick( function() {dialog_box.style().set('shown', false); });
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/*
+var roi = b.bz;
+var folder = 'x_tmp_gee_outputs';
+
+var l8_20170223 = c.l8_bz('2017-02-23').clip(roi);
+Export.image.toAsset({image:l8_20170223.int16().clip(roi),description:'export_ee_2017',assetId:'bz_l8_20170223_30m',scale:30,region:roi});
+Export.image.toDrive(l8_20170223.int16().clip(roi), 'export_drv_2017', folder, 'bz_l8_20170223_30m', 30, roi, 30); 
+
+var s2_20190420 = c.s2_bz('2019-04-20').int16().clip(roi);
+var s2_20190420_ = s2_20190420.reproject({crs: 'EPSG:4326', scale: 20});
+
+Export.image.toAsset({image:s2_20190420.int16().clip(roi),description:'export_ee_2019',assetId:'bz_s2_20190420_20m',scale:20,region:roi, maxPixels: 100000000000});
+Export.image.toDrive({image: s2_20190420.int16().clip(roi), description:'export_drv_2019', folder: folder, fileNamePrefix: 'bz_s2_20190420_20m', crs: 'EPSG:4326', region: roi, maxPixels: 100000000000}); 
+*/
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

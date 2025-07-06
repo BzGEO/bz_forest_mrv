@@ -1,0 +1,18 @@
+// Source: https://code.earthengine.google.com/?scriptPath=Examples%3ADatasets%2FMODIS_006_MCD64A1
+// Details: https://developers.google.com/earth-engine/datasets/catalog/MODIS_006_MCD64A1
+// 18 Oct. 2023
+
+var a = require('users/bzgeo/examples:_ancillary/mes');
+var burn_scars = ee.ImageCollection('MODIS/061/MCD64A1').select('BurnDate');
+
+var burned_2019 = burn_scars.filter(ee.Filter.date('2019-01-01', '2019-05-31')).median().reproject('EPSG:4326', null, 500).clip(a.roi_mes);
+var burned_2020 = burn_scars.filter(ee.Filter.date('2020-01-01', '2020-05-31')).median().reproject('EPSG:4326', null, 500).clip(a.roi_mes);
+var burned_2021 = burn_scars.filter(ee.Filter.date('2021-01-01', '2021-05-31')).median().reproject('EPSG:4326', null, 500).clip(a.roi_mes);
+
+//Map.setCenter(-88.6824, 17.4344, 10);
+Map.centerObject(a.roi_mes,7);
+Map.addLayer(burned_2019, {palette:['maroon']}, 'Burned Area 2019', true);
+Map.addLayer(burned_2020, {palette:['red']}, 'Burned Area 2020', true);
+Map.addLayer(burned_2021, {palette:['orange']}, 'Burned Area 2021', true);
+Map.addLayer(a.cam_bnds_ln,{palette: "white"},"Int'l Borders", true);
+Map.setOptions('SATELLITE');

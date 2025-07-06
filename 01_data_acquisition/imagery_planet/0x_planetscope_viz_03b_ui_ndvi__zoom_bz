@@ -1,0 +1,120 @@
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Script for visualizing Planet / NICFI monthly and bi-annual mosaics for MESOAMERICA 
+// Last updated: 07.07.2024
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/*
+NOTICE: By accessing this script, you agree to the following licensing agreement from Planet,
+including the clause that "all use must be non-commercial or not in the primary pursuit of profit."
+https://assets.planet.com/docs/Planet_ParticipantLicenseAgreement_NICFI.pdf
+
+To access the Planet data for your own use, including downloading or other use in Google Earth Engine, please refer to:
+https://www.planet.com/nicfi/
+
+The imagery included here are a subset of the Americas imagery, which can be accessed from the following:
+https://code.earthengine.google.com/?scriptPath=Examples%3ADatasets%2Fprojects_planet-nicfi_assets_basemaps_americas
+*/
+ 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+var a = require('users/bzgeo/examples:_ancillary/mes');
+var b = require('users/bzgeo/examples:_ancillary/ps_bz');
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+var viz_lt = {min: 1984,  max: 2024,  palette: ['#9400D3', '#4B0082', '#0000FF', '#00FF00', '#FFFF00', '#FF7F00', '#FF0000']};
+var viz_lt2 = {min: 2019,  max: 2024,  palette: ['#FF7F00', '#FF0000']};
+var lt = ee.Image("projects/bz-sdg/x_tmp/lt_defor/bz_defor_lt_nbr_1984_2024_0621_030m").select('yod').clip(a.bz_bnds);
+var lt_2023 = lt.updateMask(lt.gte(2019)).updateMask(lt.lt(2024));
+
+var mang_cath = ee.FeatureCollection("users/servirbz/compil_ecosys/terrestrial/mangrove_cover/bz_mangroves_cathalac_2018"),
+    mang_si = ee.FeatureCollection("users/servirbz/compil_ecosys/terrestrial/mangrove_cover/bz_mangroves_si_2020"),
+    mang_svr = ee.FeatureCollection("users/servirbz/compil_ecosys/terrestrial/mangrove_cover/bz_mangroves_servir_2019_"),
+    pts = ee.FeatureCollection("projects/bz-sdg/x_tmp/bz_redd/bz_mangrove_val_pts_2024");
+    
+var mang_cath_ln = ee.Image().byte().paint({featureCollection:mang_cath,width:1});
+var mang_svr_ln = ee.Image().byte().paint({featureCollection:mang_svr,width:1});
+var mang_si_ln = ee.Image().byte().paint({featureCollection:mang_si,width:1});
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+var title = ui.Label("Image Viewer: Planet / NICFI mosaics (incl. NDVI)", {stretch:'horizontal',textAlign:'center',fontWeight:'bold',fontSize:'24px', color: 'gray'});
+var descr = ui.Label("instructions: swipe the images and change the dates to compare them", {stretch:'horizontal',textAlign:'center',fontSize: '14px', color: 'red'});
+var credits = ui.Label("credits: imagery © 2025 Planet Labs Inc.", {stretch:'horizontal',textAlign:'center',fontSize: '12px', color: 'gray'});
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// PART 1: SET UP LEFT AND RIGHT PANEL WINDOWS
+
+var Map1 = ui.Map(); // CREATE LEFT MAP
+var Map2 = ui.Map(); // CREATE RIGHT MAP
+
+Map1.setOptions('TERRAIN');
+Map2.setOptions('TERRAIN');
+Map1.setControlVisibility(true);
+Map2.setControlVisibility(true);
+Map1.setCenter(-88.0683, 17.4881, 11);
+Map2.setCenter(-88.0683, 17.4881, 11);
+
+var leftSelector = addLayerSelector(Map1, 40, 'top-left');
+function addLayerSelector(mapToChange, defaultValue, position) {
+  var label = ui.Label('Select an image to visualize');
+  function updateMap(selection) {
+    mapToChange.layers().set(0, ui.Map.Layer(b.images_ps[selection],b.pal_ps,"Planet imagery (true color)", false));
+    mapToChange.layers().set(1, ui.Map.Layer(b.images_ps[selection],b.pal_ps_1,"Planet imagery (false color, green)", false));
+    mapToChange.layers().set(2, ui.Map.Layer(b.images_ps[selection],b.pal_ps_2,"Planet imagery (false color, red)", true));
+    mapToChange.layers().set(3, ui.Map.Layer(b.images_ps_ndvi[selection],b.pal_ndvi,"Planet NDVI", false));
+    mapToChange.layers().set(4, ui.Map.Layer(mang_cath_ln, {palette: ['yellow']}, "Mangroves: CATHALAC (2018) - yellow", false));
+    mapToChange.layers().set(5, ui.Map.Layer(mang_si_ln, {palette: ['lime']}, "Mangroves: Smithsonian (2020) - lime green", false));
+    mapToChange.layers().set(6, ui.Map.Layer(mang_svr_ln, {palette: ['blue']}, "Mangroves: SERVIR (2019) - blue", false));
+    mapToChange.layers().set(7, ui.Map.Layer(lt, viz_lt, "LCC: 1984-2024*", false));
+    mapToChange.layers().set(8, ui.Map.Layer(lt_2023, viz_lt2, "LCC: 2019-2024*", false));
+    mapToChange.layers().set(9, ui.Map.Layer(a.pa_bz_ln,{palette: "yellow"},"Prot. areas", true));
+    mapToChange.layers().set(10, ui.Map.Layer(a.bnds_intl_cam_ln2,{palette: "white"},"Int'l boundaries", true));
+    mapToChange.layers().set(11, ui.Map.Layer(pts, {},'Validation points', false));
+    }
+var select = ui.Select({items: Object.keys(b.images_ps_ndvi), onChange: updateMap});
+  select.setValue(Object.keys(b.images_ps_ndvi)[defaultValue], true);
+var controlPanel = ui.Panel({widgets: [label, select], style: {position: position}});
+  mapToChange.add(controlPanel);
+}
+
+var rightSelector = addLayerSelector2(Map2, 66, 'top-right');
+function addLayerSelector2(mapToChange, defaultValue, position) {
+  var label = ui.Label('Select an image to visualize');
+  function updateMap(selection) {
+    mapToChange.layers().set(0, ui.Map.Layer(b.images_ps[selection],b.pal_ps,"Planet imagery (true color)", false));
+    mapToChange.layers().set(1, ui.Map.Layer(b.images_ps[selection],b.pal_ps_1,"Planet imagery (false color, green)", false));
+    mapToChange.layers().set(2, ui.Map.Layer(b.images_ps[selection],b.pal_ps_2,"Planet imagery (false color, red)", true));
+    mapToChange.layers().set(3, ui.Map.Layer(b.images_ps_ndvi[selection],b.pal_ndvi,"Planet NDVI", false));
+    mapToChange.layers().set(4, ui.Map.Layer(mang_cath_ln, {palette: ['yellow']}, "Mangroves: CATHALAC (2018) - yellow", false));
+    mapToChange.layers().set(5, ui.Map.Layer(mang_si_ln, {palette: ['lime']}, "Mangroves: Smithsonian (2020) - lime green", false));
+    mapToChange.layers().set(6, ui.Map.Layer(mang_svr_ln, {palette: ['blue']}, "Mangroves: SERVIR (2019) - blue", false));
+    mapToChange.layers().set(7, ui.Map.Layer(lt, viz_lt, "LCC: 1984-2024*", false));
+    mapToChange.layers().set(8, ui.Map.Layer(lt_2023, viz_lt2, "LCC: 2019-2024*", false));
+    mapToChange.layers().set(9, ui.Map.Layer(a.pa_bz_ln,{palette: "yellow"},"Prot. areas", true));
+    mapToChange.layers().set(10, ui.Map.Layer(a.bnds_intl_cam_ln2,{palette: "white"},"Int'l boundaries", true));
+    mapToChange.layers().set(11, ui.Map.Layer(pts, {},'Validation points', false));
+    }
+var select = ui.Select({items: Object.keys(b.images_ps_ndvi), onChange: updateMap});
+  select.setValue(Object.keys(b.images_ps_ndvi)[defaultValue], true);
+var controlPanel = ui.Panel({widgets: [label, select], style: {position: position}});
+  mapToChange.add(controlPanel);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// PART 2: INITIATE THE SPLIT PANEL
+
+var splitPanel = ui.SplitPanel({firstPanel:Map1, secondPanel:Map2, wipe:true, style:{stretch: 'both'}});
+
+ui.root.widgets().reset([title, descr, credits, splitPanel]);
+//ui.root.widgets().reset([splitPanel]);
+ui.root.setLayout(ui.Panel.Layout.Flow('vertical'));
+
+var linker = ui.Map.Linker([Map1, Map2]);
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

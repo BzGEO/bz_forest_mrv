@@ -1,0 +1,78 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var bz_bounds = ee.FeatureCollection("projects/sica/aoi/limites_nacionales/bz_bounds_swbd"),
+    mangrove_pts = ee.FeatureCollection("projects/servir-sco-assets/assets/SCO_CA/BZ_MRV/FieldPoints/bz_mangrove_CEO_2000_2018"),
+    SERVIR_Mangrove = ee.FeatureCollection("users/servirbz/compil_ecosys/terrestrial/mangrove_cover/bz_mangroves_servir_2019_"),
+    GMW_Mangrove = ee.FeatureCollection("users/servirbz/compil_ecosys/terrestrial/mangrove_cover/bz_mangroves_gmw_2019"),
+    CATHALAC_Mangrove = ee.FeatureCollection("users/servirbz/compil_ecosys/terrestrial/mangrove_cover/bz_mangroves_cathalac_2018"),
+    SI_Mangrove = ee.FeatureCollection("users/servirbz/compil_ecosys/terrestrial/mangrove_cover/bz_mangroves_si_2020"),
+    ccdc_0 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/CCDC-SMA/Guatemala0_CCDCSMA_Mosaic_2023"),
+    ccdc_2600 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/CCDC-SMA/Guatemala10000_CCDCSMA_Mosaic_2023"),
+    ccdc_10000 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/CCDC-SMA/Guatemala2600_CCDCSMA_Mosaic_2023"),
+    MAG0 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/Publication/bz_landtrendr_ms12rt75bmp1mmu1_mag0"),
+    MAG200 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/Publication/bz_landtrendr_ms12rt75bmp1mmu1_mag200"),
+    MAG300 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/Publication/bz_landtrendr_ms12rt75bmp1mmu1"),
+    AAPoints = ee.FeatureCollection("projects/servir-sco-assets/assets/SCO_CA/Publication/combinedSurveyPts3");
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// set visualization parameters
+//var pal_ps_vis = {"bands":["R","G","B"],"min":64,"max":5454,"gamma":1.8};
+var pal_ps_vis = {min: [-11, 100, -40], max: [700, 950, 800], bands: ['R', 'G', 'B']};
+var pal_lt = ['#9400D3', '#4B0082', '#0000FF', '#00FF00', '#FFFF00', '#FF7F00', '#FF0000'];
+var yodVizParms = {min: 1984, max: 2023, palette: pal_lt};
+var magVizParms = {min: 200, max: 800, palette: pal_lt};
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Adding Planet NICFI data to confirm disturbances | Filter basemaps by date and get the first image from filtered results
+var nicfi = ee.ImageCollection("projects/planet-nicfi/assets/basemaps/americas");
+
+// Filter basemaps by date and get the first image from filtered results
+var basemap2018 = ee.Image('projects/bz-sdg/compil_imagery/optical/planet/bz_planetscope_q2018_05');
+var basemap2019 = ee.Image('projects/bz-sdg/compil_imagery/optical/planet/bz_planetscope_q2019_05');
+var basemap2020 = ee.Image('projects/bz-sdg/compil_imagery/optical/planet/bz_planetscope_q2020_05');
+var basemap2021 = ee.Image('projects/bz-sdg/compil_imagery/optical/planet/bz_planetscope_2021_04');
+var basemap2022 = ee.Image('projects/bz-sdg/compil_imagery/optical/planet/bz_planetscope_2022_04');
+var basemap2023 = ee.Image('projects/bz-sdg/compil_imagery/optical/planet/bz_planetscope_2023_04');
+
+/*
+var basemap2018 = ee.Image("projects/sica/compil_imagenes/opticas/planet/gt_nacional/gt_planetscope_q2018_05");
+var basemap2019 = ee.Image("projects/sica/compil_imagenes/opticas/planet/gt_nacional/gt_planetscope_q2019_05");
+var basemap2020 = ee.Image("projects/sica/compil_imagenes/opticas/planet/gt_nacional/gt_planetscope_q2020_05");
+var basemap2021 = ee.Image("projects/sica/compil_imagenes/opticas/planet/gt_nacional/gt_planetscope_2021_03");
+var basemap2022 = ee.Image("projects/sica/compil_imagenes/opticas/planet/gt_nacional/gt_planetscope_2022_03");
+var basemap2023 = ee.Image("projects/sica/compil_imagenes/opticas/planet/gt_nacional/gt_planetscope_2023_01");
+*/
+
+Map.addLayer(basemap2018.clip(bz_bounds), pal_ps_vis, '2018 mosaic', 1); // true = 1; false = 0
+Map.addLayer(basemap2019.clip(bz_bounds), pal_ps_vis, '2019 mosaic', 0);
+Map.addLayer(basemap2020.clip(bz_bounds), pal_ps_vis, '2020 mosaic', 0);
+Map.addLayer(basemap2021.clip(bz_bounds), pal_ps_vis, '2021 mosaic', 0);
+Map.addLayer(basemap2022.clip(bz_bounds), pal_ps_vis, '2022 mosaic', 1);
+Map.addLayer(basemap2023.clip(bz_bounds), pal_ps_vis, '2023 mosaic', 1);
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Extract disturbance data by year // LandTrendr band ('yod') ; CCDC-SMA band ('year') // change algorithm output here
+// var Disturbance2019masked = MAG300.updateMask(MAG300.select('yod').eq(2019));
+// var Disturbance2020masked = MAG300.updateMask(MAG300.select('yod').eq(2020));
+// var Disturbance2021masked = MAG300.updateMask(MAG300.select('yod').eq(2021));
+// var Disturbance2022masked = MAG300.updateMask(MAG300.select('yod').eq(2022));
+// var Disturbance2023masked = MAG300.updateMask(MAG300.select('yod').eq(2023));
+
+// Add disturbance maps to viewer // change algorithm output here
+Map.addLayer(MAG300.select('mag').clip(bz_bounds), magVizParms, 'MAG300', 1); // true = 1; false = 0
+Map.addLayer(MAG200.select('mag').clip(bz_bounds), magVizParms, 'MAG200', 1);
+Map.addLayer(MAG0.select('mag').clip(bz_bounds), magVizParms, 'MAG0', 1);
+Map.addLayer(MAG300.select('yod').clip(bz_bounds), yodVizParms, 'MAG300 yod', 1); // true = 1; false = 0
+Map.addLayer(MAG200.select('yod').clip(bz_bounds), yodVizParms, 'MAG200 yod', 1);
+Map.addLayer(MAG0.select('yod').clip(bz_bounds), yodVizParms, 'MAG0 yod', 1);
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+var outline = ee.Image().byte().paint({featureCollection:SERVIR_Mangrove,width:2});
+Map.addLayer(outline, {palette: ["yellow"]}, "SERVIR_Mangrove ", 1); // true = 1; false = 0
+Map.addLayer(AAPoints, {}, 'Accuracy Assessment Points')
+Map.centerObject(SERVIR_Mangrove, 15);
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

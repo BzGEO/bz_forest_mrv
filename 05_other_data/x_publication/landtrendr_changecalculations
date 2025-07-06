@@ -1,0 +1,71 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var CI = ee.FeatureCollection("projects/servir-sco-assets/assets/SCO_CA/BZ_MRV/Mangroves/OnlySI"),
+    CATHALAC = ee.FeatureCollection("projects/servir-sco-assets/assets/SCO_CA/BZ_MRV/Mangroves/OnlyCATHALAC"),
+    Belize = ee.FeatureCollection("projects/servir-sco-assets/assets/SCO_CA/BZ_MRV/aoi_BZ/belize_swbd"),
+    BMP05 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/Publication/bz_landtrendr_bestmodelproportion_05"),
+    BMP1 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/Publication/bz_landtrendr_bestmodelproportion_1"),
+    BMP125 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/Publication/bz_landtrendr_bestmodelproportion_125"),
+    MS12 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/Publication/bz_landtrendr_maxsegments12"),
+    MS4 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/Publication/bz_landtrendr_maxsegments4"),
+    MS6 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/Publication/bz_landtrendr_maxsegments6"),
+    RT25 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/Publication/bz_landtrendr_recoverythreshold_025"),
+    RT05 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/Publication/bz_landtrendr_recoverythreshold_05"),
+    RT75 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/Publication/bz_landtrendr_recoverythreshold_075"),
+    PA = ee.FeatureCollection("projects/servir-sco-assets/assets/SCO_CA/BZ_MRV/aoi_BZ/Belize_Protected_Areas_All"),
+    Watersheds = ee.FeatureCollection("projects/servir-sco-assets/assets/SCO_CA/BZ_MRV/aoi_BZ/Belize_Watersheds"),
+    District = ee.FeatureCollection("projects/servir-sco-assets/assets/SCO_CA/BZ_MRV/aoi_BZ/Belize_Districts"),
+    MMU11 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/Publication/LandTrendr/bz_landtrendr_control"),
+    MMU1 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/Publication/LandTrendr/bz_landtrendr_control_mmu1"),
+    MMU5 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/Publication/LandTrendr/bz_landtrendr_control_mmu5"),
+    SERVIR = ee.FeatureCollection("projects/servir-sco-assets/assets/SCO_CA/Publication/Boundaries/SERVIR2017");
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+var startYear = 2000;
+var endYear = 2024;
+// set visualization dictionaries
+var palette = ['#9400D3', '#4B0082', '#0000FF', '#00FF00', '#FFFF00', '#FF7F00', '#FF0000'];
+var yodVizParms = {
+  min: startYear,
+  max: endYear,
+  palette: palette
+};
+Map.centerObject(Belize, 10)
+var SERVIR_outline = ee.Image().byte().paint({featureCollection:SERVIR,width:2});
+// Map.addLayer(SERVIR_outline, {palette:'yellow'}, 'SERVIR Mangrove Outline', true);
+// Map.addLayer(MMU11.select('yod').updateMask(MMU11.select('yod').gt(2017)).clip(SERVIR), yodVizParms, 'SERVIR MMU11', false);
+// Map.addLayer(MMU1.select('yod').updateMask(MMU1.select('yod').gt(2017)).clip(SERVIR), yodVizParms, 'SERVIR MMU1', false);
+// Map.addLayer(MMU5.select('yod').updateMask(MMU5.select('yod').gt(2017)).clip(SERVIR), yodVizParms, 'SERVIR MMU5', false);
+// Map.addLayer(BMP05.select('yod').updateMask(BMP05.select('yod').gt(2017)).clip(SERVIR), yodVizParms, 'SERVIR BMP05', false);
+// Map.addLayer(BMP1.select('yod').updateMask(BMP1.select('yod').gt(2017)).clip(SERVIR), yodVizParms, 'SERVIR BMP1', false);
+// Map.addLayer(BMP125.select('yod').updateMask(BMP125.select('yod').gt(2017)).clip(SERVIR), yodVizParms, 'SERVIR BMP125', false);
+// Map.addLayer(RT25.select('yod').updateMask(RT25.select('yod').gt(2017)).clip(SERVIR), yodVizParms, 'SERVIR RT25', false);
+// Map.addLayer(RT75.select('yod').updateMask(RT75.select('yod').gt(2017)).clip(SERVIR), yodVizParms, 'SERVIR RT75', false);
+// Map.addLayer(RT05.select('yod').updateMask(RT05.select('yod').gt(2017)).clip(SERVIR), yodVizParms, 'SERVIR RT05', false);
+// Map.addLayer(MS12.select('yod').updateMask(MS12.select('yod').gt(2017)).clip(SERVIR), yodVizParms, 'SERVIR MS12', false);
+// Map.addLayer(MS4.select('yod').updateMask(MS4.select('yod').gt(2017)).clip(SERVIR), yodVizParms, 'SERVIR MS4', false);
+// Map.addLayer(MS6.select('yod').updateMask(MS6.select('yod').gt(2017)).clip(SERVIR), yodVizParms, 'SERVIR MS6', false);
+
+// Change in Protected Area
+var layer1 = MMU5.select('yod').clip(SERVIR);
+var layer2 = layer1;
+var layer3 = layer1.clip(PA);
+Map.addLayer(layer2, yodVizParms, 'SERVIR MMU1', true);
+// print hectare change for each landtrendr run
+var areaCalc = ui.Chart.image.histogram(layer2, SERVIR, 100) // 100m x 100m = 1 hectare
+  .setSeriesNames(['Area disturbed (ha.)'])
+  .setOptions({title: 'Mangrove Area Disturbed based on SERVIR mangrove extent', hAxis: {title: 'Year'}, vAxis: {title: 'Area (hectares)'},
+  series: {0: {color: 'red'}}
+}); 
+print(areaCalc);
+var areaCalc2 = ui.Chart.image.histogram(layer3.clip(PA), PA, 100) // 100m x 100m = 1 hectare
+  .setSeriesNames(['Area disturbed (ha.)'])
+  .setOptions({title: 'Mangrove Area Disturbed based on SERVIR mangrove extent - PA', hAxis: {title: 'Year'}, vAxis: {title: 'Area (hectares)'},
+  series: {0: {color: 'red'}}
+}); 
+print(areaCalc2);
+var PA_outline = ee.Image().byte().paint({featureCollection:PA,width:2});
+Map.addLayer(PA_outline, {palette:'grey'}, 'PA Outline', true);
+var District_outline = ee.Image().byte().paint({featureCollection:District,width:2});
+Map.addLayer(District_outline, {palette:'black'}, 'District Outline', false);
+var Watershed_outline = ee.Image().byte().paint({featureCollection:Watersheds,width:2});
+Map.addLayer(Watershed_outline, {palette:'blue'}, 'Watershed Outline', false);
+

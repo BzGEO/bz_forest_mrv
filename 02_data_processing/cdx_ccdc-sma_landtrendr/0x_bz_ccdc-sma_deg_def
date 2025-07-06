@@ -1,0 +1,186 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var bz_aoi = ee.FeatureCollection("projects/servir-sco-assets/assets/SCO_CA/BZ_MRV/aoi_BZ/belize_swbd"),
+    bz_ccdc0 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/BZ_MRV/CCDC-SMA_BZ/bz_ccdc_0"),
+    bz_ccdc2600 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/BZ_MRV/CCDC-SMA_BZ/bz_ccdc_2600"),
+    bz_ccdc10000 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/BZ_MRV/CCDC-SMA_BZ/bz_ccdc_10000"),
+    bz_forest_2020 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/BZ_MRV/ForestMask_BZ/bz_fc_svr_2020"),
+    bz_forest_2000 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/BZ_MRV/ForestMask_BZ/bz_fc_svr_2000"),
+    gt_motagua_aoi = ee.FeatureCollection("projects/servir-sco-assets/assets/SCO_CA/aoi/izabal_motagua"),
+    gt_ccdc0 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/CCDC-SMA/ccdc0_30m"),
+    gt_ccdc2600 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/CCDC-SMA/Guatemala2600_CCDCSMA_Mosaic"),
+    gt_ccdc10000 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/CCDC-SMA/ccdc10000_30m"),
+    gt_forest_2000 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/ForestMask/gt_bosque_2001_gimbot"),
+    gt_forest_2020 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/ForestMask/gt_bosque_2020_maga"),
+    elsv_aoi = ee.FeatureCollection("projects/servir-sco-assets/assets/SCO_CA/BZ_MRV/aoi_BZ/el_salvador_marn"),
+    elsv_ccdc0 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/BZ_MRV/CCDC-SMA_ESV/elsv_ccdc_0"),
+    elsv_ccdc2600 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/BZ_MRV/CCDC-SMA_ESV/elsv_ccdc_2600"),
+    elsv_ccdc10000 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/BZ_MRV/CCDC-SMA_ESV/elsv_ccdc_10000"),
+    ca_forest_2000 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/BZ_MRV/ForestMask_BZ/Forest2000_CA"),
+    ca_forest_2020 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/BZ_MRV/ForestMask_BZ/Forest2020_CA");
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+
+/* Script to Estimate Deforestation and Degradation with CCDC-SMA inputs 
+
+Script adapted by Christine Evans, Lauren Carey, and Emil Cherrington
+Last updated 12 October 2023 
+ 
+Background: 
+The outputs of CCDC-SMA contain pixels in which changes were detected between 2000 - 2023. 
+Each pixel contains the year in which the disturbance was detected. 
+
+Instructions: 
+(1) Run the script
+(2) Change the CCDC-SMA input to see how deforestation/degradation varies by threshold
+
+*******************************************************************************************************
+
+Table of Contents: 
+(1) Define Variables
+(2) Define Visualization Parameters  
+(3) Extract Degradation 
+(4) Extract Deforestation 
+(5) Generate Histogram for Estimated Degradation
+(6) Generate Histogram for Estimated Deforestation 
+(7) Visualize Estimated Deforestation by Year 
+(8) Add layers to map 
+(9) Optional - Generate map legend 
+
+*/
+
+// ****************************** Part 1: Define Variables  ********************************************
+
+// Define variables: CCDC-SMA image, AOI, and forest masks
+var ccdc = bz_ccdc10000; // The output from CCDC-SMA; change to other thresholds (0, 10000) to see how deforestation/degradation results vary
+var aoi = bz_aoi;
+var outline_aoi = ee.Image().byte().paint({featureCollection:aoi,width:2}); // AOI Border 
+var ForestMask2000 = bz_forest_2000;
+var ForestMask2020 = bz_forest_2020;
+
+// Define basemap settings, set zoom and add aoi and forest layers to map 
+Map.setOptions('SATELLITE');
+Map.centerObject(aoi, 9);
+Map.addLayer(outline_aoi,{palette: ["white"]},'AOI', 1);
+ 
+
+// ******************************* Part 2: Define Visualization Parameters ********************************************
+
+// Define start and end years 
+var start = 2000; // first year of study period 
+var end = 2020; // last year of study period 
+
+// Visualization paremeters 
+var palette = ['#9400D3', '#4B0082', '#0000FF', '#00FF00', '#FFFF00', '#FF7F00', '#FF0000'];
+var visPar = {min: start, max: end, palette: palette};
+
+
+// ******************************* Part 3 - Extract Degradation ********************************************
+
+/* In this exercise, forest degradation is defined as:
+Pixels that started as forest and ended as forest, but experienced disturbance during the time period.
+*/
+
+// Select the year band from the CCDC-SMA image 
+var ccdc_output = ccdc.select(['year']); 
+
+// Mask the CCDC-SMA image with the 2020 Forest Mask 
+// This allows us to isolate pixels that started and ended as forest, but were disturbed during the study period
+var degradation_mask = ccdc_output.updateMask(ForestMask2020);
+var degradation = ccdc_output.updateMask(degradation_mask);
+
+
+// ******************************* Part 4 - Extract Deforestaion  ********************************************
+
+/* Deforestation is defined in this exercise as:
+Pixels that were forest in 2000 but NOT in 2023, and experienced disturbance during this time period
+*/
+
+// Our forest masks contains values of 1 for forest. 
+// We need to fill everywhere that is not forest with a value of 0. 
+var Unmask = ForestMask2020.unmask(0).clip(aoi);
+var NonForest = Unmask.eq(0);   
+var NonForest2020 = Unmask.updateMask(NonForest); // Aplicar la mascara a la variable original 'Unmask'
+
+// // Check that the non-forest layer displays correctly to ensure you have selected non-forest pixels in 2020
+Map.addLayer(NonForest2020, {palette:['black']}, 'Non-forest 2020'); 
+
+// Define deforestation 
+var NonForest2020 = ccdc_output.updateMask(NonForest); 
+var deforestation = ccdc_output.updateMask(NonForest2020);
+
+
+// ******************************* Part 5 - Generate Historgram for Estimated Degradation ********************************************
+
+var forest_deg = ui.Chart.image.histogram(degradation.clip(aoi), aoi, 100) // 100m x 100m = 1 hectare 
+  .setSeriesNames(['Est. Area Degraded (ha.)'])
+  .setOptions({title:'Est. Area Degraded, 2000-2020',hAxis: {title: 'Year'},vAxis: {title: 'Area (hectares)'},series: {0: {color: 'orange'}}}); 
+
+print(forest_deg);
+
+
+// ******************************* Part 6 - Generate Historgram for Estimated Deforestation ********************************************
+
+var forest_def = ui.Chart.image.histogram(deforestation.clip(aoi), aoi, 100) // 100m x 100m = 1 hectare
+  .setSeriesNames(['Est. Area Deforested (ha.)'])
+  .setOptions({title: 'Est. Area Deforested, 2000-2020', hAxis: {title: 'Year'}, vAxis: {title: 'Area (hectares)'},series: {0: {color: 'red'}}}); 
+
+print(forest_def);
+
+
+// ******************************* Part 7 - Visualize Deforestation by Year ********************************************
+
+// We can can select just one year of estimated deforestation 
+var def2000 = deforestation.updateMask(deforestation.lt(2001)); // Año 2000
+var def2005 = deforestation.updateMask(deforestation.eq(2006)); // Año 2006
+var def2010 = deforestation.updateMask(deforestation.eq(2011)); // Año 2011
+
+// Or we can select a range of years 
+var def2000_2010 = deforestation.updateMask(deforestation.lt(2011));
+var def2010_2019 = deforestation.updateMask(deforestation.gte(2010));
+
+
+// ****************************** Part 8 - Add Layers to Map ***********************************************************
+
+// Add forest layers to map from 2000 and 2020 
+Map.addLayer(ForestMask2000.clip(aoi), {palette: '#43c50a'}, 'Forest 2000', 0); 
+Map.addLayer(ForestMask2020.clip(aoi), {palette: '#43c50a'}, 'Forest 2020');
+
+// Add degradation, deforestation, and non-forest layers to map
+Map.addLayer(degradation.clip(aoi), {palette:['orange']}, 'Degradation, 2000-2020');
+Map.addLayer(deforestation.clip(aoi), {palette:['red']}, 'Deforestation, 2000-2020'); 
+
+// Add individual years and ranges of deforestation 
+Map.addLayer(def2005, {palette:['red']}, 'Deforestation 2005', 0); 
+Map.addLayer(def2010, {palette:['red']}, 'Deforestation 2010', 0); 
+Map.addLayer(def2000_2010, {palette:['crimson']}, 'Deforestation 2000-2010', 0); 
+Map.addLayer(def2010_2019, {palette:['maroon']}, 'Deforestation 2010-2019', 0); 
+
+
+// ******************************* Part 9 - Generate Map Legend (optional) ********************************************
+
+// set position of panel
+var legend = ui.Panel({style: {position: 'bottom-left', padding: '8px 15px'}});
+ 
+// Create legend title
+var legendTitle = ui.Label({value:'Legend',style: {fontWeight:'bold',fontSize:'18px',margin:'0 0 4px 0',padding:'0'}});
+ 
+// Add the title to the panel
+legend.add(legendTitle);
+ 
+// Creates and styles 1 row of the legend.
+var makeRow = function(color, name) {
+      var colorBox = ui.Label({style: {backgroundColor: '#' + color,padding: '8px',margin: '0 0 4px 0'}});
+      var description = ui.Label({value: name,style: {margin: '0 0 4px 6px'}});
+      return ui.Panel({widgets: [colorBox, description],layout: ui.Panel.Layout.Flow('horizontal')});};
+ 
+//  Palette with the colors
+var palette = ['FFAE33','FF5733', '43c50a', '000000'];
+ 
+// name of the legend
+var names = ['Degraded Forest, 2000-2020','Deforestation, 2000-2020','Stable Forest, 2020', 'Non-Forest, 2020'];
+ 
+// Add color and and names
+for (var i = 0; i < 4; i++) {legend.add(makeRow(palette[i], names[i]));
+} 
+ 
+// add legend to map (alternatively you can also print the legend to the console)
+Map.add(legend);

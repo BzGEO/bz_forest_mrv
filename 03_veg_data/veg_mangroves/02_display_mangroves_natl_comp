@@ -1,0 +1,95 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var bz_bounds = ui.Map.FeatureViewLayer("projects/bz-sdg/aoi/bz_bounds_swbd_fv", null, "bz_bounds_swbd_fv"),
+    bz_bounds0 = ee.FeatureCollection("projects/bz-sdg/aoi/bz_bounds_swbd"),
+    ps_q201605 = ee.Image("projects/bz-sdg/compil_imagery/optical/planet/bz_planetscope_q2016_05"),
+    ps_q201905 = ee.Image("projects/bz-sdg/compil_imagery/optical/planet/bz_planetscope_q2019_05"),
+    ps_202306 = ee.Image("projects/bz-sdg/compil_imagery/optical/planet/bz_planetscope_2023_06"),
+    s2_202306 = ee.Image("users/servirbz/compil_imagery/optical/sentinel2/bz_s2_boa/bz_sentinel2_boa_2023-06-08_10m_cl"),
+    l9_202306 = ee.Image("users/servirbz/compil_imagery/optical/landsat/bz_landsat_boa/bz_20230608_l9_refl"),
+    mcd43_202306 = ee.Image("users/servirbz/compil_imagery/optical/modis/mcd43a4_bz/bz_mcd43a4_2023-06"),
+    lt_1984_2023 = ee.Image("projects/bz-sdg/x_tmp/lt_defor/mes_forest_loss_lt_nbr_1984_2023_0615_030m"),
+    mang_cath = ee.FeatureCollection("users/servirbz/compil_ecosys/terrestrial/mangrove_cover/bz_mangroves_cathalac_2018"),
+    mang_gmw = ee.FeatureCollection("users/servirbz/compil_ecosys/terrestrial/mangrove_cover/bz_mangroves_gmw_2019"),
+    mang_si = ee.FeatureCollection("users/servirbz/compil_ecosys/terrestrial/mangrove_cover/bz_mangroves_si_2020"),
+    mang_svr = ee.FeatureCollection("users/servirbz/compil_ecosys/terrestrial/mangrove_cover/bz_mangroves_servir_2019_"),
+    bmp_mpr_roi = 
+    /* color: #d63000 */
+    /* shown: false */
+    /* displayProperties: [
+      {
+        "type": "rectangle"
+      }
+    ] */
+    ee.Geometry.Polygon(
+        [[[-89.05862015218591, 17.278416007090847],
+          [-89.05862015218591, 16.845176431155156],
+          [-88.73109024495935, 16.845176431155156],
+          [-88.73109024495935, 17.278416007090847]]], null, false),
+    ccdc_1984_2023 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/BZ_MRV/CCDC-SMA_BZ/bz_ccdc_2600");
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// DISPLAY MANGROVE DATASETS
+// Last updated: 18 Sept. 2023
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+var a = require('users/bzgeo/examples:_ancillary/mes');
+var b = require('users/servirbz/packages:bz/bz');
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+var mang_cath_ln = ee.Image().byte().paint({featureCollection:mang_cath,width:1});
+var mang_gmw_ln = ee.Image().byte().paint({featureCollection:mang_gmw,width:1});
+var mang_svr_ln = ee.Image().byte().paint({featureCollection:mang_svr,width:1});
+var mang_si_ln = ee.Image().byte().paint({featureCollection:mang_si,width:1});
+
+// lt
+var lt = lt_1984_2023.select(['yod']).clip(bz_bounds0);
+var lt_2000s = lt.updateMask(lt.gte(2000));
+var lt_2020s = lt.updateMask(lt.gte(2020));
+var lt_2020s_svr = lt.updateMask(lt.gte(2020)).clip(mang_svr);
+
+// ccdc 
+var ccdc = ccdc_1984_2023.select(['year']).clip(bz_bounds0);
+var ccdc_2000s = ccdc.updateMask(ccdc.gte(2000));
+var ccdc_2020s = ccdc.updateMask(ccdc.gte(2020));
+var ccdc_2020s_svr = ccdc.updateMask(ccdc.gte(2020)).clip(mang_svr);
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//Map.centerObject(bz_bounds0, 9);
+//Map.setCenter(-88.02806, 17.7631, 14);
+//Map.setCenter(-88.19941, 17.50129, 15);
+//Map.setCenter(-88.22602, 17.50382, 14);
+Map.setCenter(-88.7764, 17.2472,9);
+Map.setOptions('SATELLITE');
+
+Map.addLayer(mcd43_202306,{min: 200, max: 4000, bands: ['b6', 'b4', 'b3']},"MCD43A4 2023-06", false);
+Map.addLayer(l9_202306,{min: 200, max: 4000, bands: ['B5', 'B4', 'B3']},"Landsat-9 2023-06-08", false);
+Map.addLayer(s2_202306,{min: 200, max: 4000, bands: ['B11', 'B8', 'B4']},"Sentinel-2 2023-06-08", false);
+
+Map.addLayer(ps_q201605, {min:100,max:1575,bands:['R','G','B']}, "PlanetScope 2016-05", false);
+Map.addLayer(ps_q201905, {min:100,max:1575,bands:['R','G','B']}, "PlanetScope 2019-05", false);
+Map.addLayer(ps_202306, {min:100,max:1575,bands:['R','G','B']}, "PlanetScope 2023-06", true);
+Map.addLayer(lt,{min: 1984,  max: 2023,  palette: ['#9400D3', '#4B0082', '#0000FF', '#00FF00', '#FFFF00', '#FF7F00', '#FF0000']}, "LCC (LT): 1984-2023", false);
+Map.addLayer(lt_2000s,{min: 2000,  max: 2023,  palette: ['#FFFF00', '#FF7F00', '#FF0000']}, "LCC (LT): 2000-2023", false);
+Map.addLayer(lt_2020s,{min: 2020,  max: 2023,  palette: ['#FF7F00', '#FF0000']}, "LCC (LT): 2020-2023", false);
+Map.addLayer(lt_2020s_svr,{min: 2020,  max: 2023,  palette: ['#FF7F00', '#FF0000']}, "LCC (LT): 2020-2023 - mangrove change", false);
+
+Map.addLayer(ccdc,{min: 1984,  max: 2023,  palette: ['#9400D3', '#4B0082', '#0000FF', '#00FF00', '#FFFF00', '#FF7F00', '#FF0000']}, "LCC (CCDC-SMA): 1984-2023", false);
+Map.addLayer(ccdc_2000s,{min: 2000,  max: 2023,  palette: ['#FFFF00', '#FF7F00', '#FF0000']}, "LCC (CCDC-SMA): 2000-2023", false);
+Map.addLayer(ccdc_2020s,{min: 2020,  max: 2023,  palette: ['#FF7F00', '#FF0000']}, "LCC (CCDC-SMA): 2020-2023", false);
+Map.addLayer(ccdc_2020s_svr,{min: 2020,  max: 2023,  palette: ['#FF7F00', '#FF0000']}, "LCC (CCDC-SMA): 2020-2023 - mangrove change", false);
+
+Map.addLayer(mang_cath_ln, {palette: ['yellow']}, "Mangroves: CATHALAC (2018) - yellow", true);
+Map.addLayer(mang_gmw_ln, {palette: ['red']}, "Mangroves: GMW (2019) - red", true);
+Map.addLayer(mang_si_ln, {palette: ['lime']}, "Mangroves: Smithsonian (2020) - lime", true);
+Map.addLayer(mang_svr_ln, {palette: ['blue']}, "Mangroves: SERVIR (2019) - blue", true);
+Map.add(ui.Map.FeatureViewLayer("users/servirbz/compil_ecosys/terrestrial/mangrove_cover/bz_mangroves_servir_2019_fv_", {color: 'white'},"Mangroves: SERVIR (2019)*", false));
+Map.addLayer(b.bz_ws_ln,{palette: ['blue']},"Watershed boundaries", false);
+Map.addLayer(b.pa_bz,{palette: ['grey']},"Protected areas", false);
+Map.addLayer(b.bnds,{palette: ['white']},"Int'l boundaries", true);
+Map.add(ui.Map.FeatureViewLayer("projects/bz-sdg/aoi/bz_bounds_swbd_fv", {color: 'white'},"Belize boundaries", false));
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

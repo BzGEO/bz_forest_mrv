@@ -1,0 +1,100 @@
+// Updated 9 August 2023 
+
+var roi = ee.Geometry.Rectangle(-87.70, 15.73, -89.30, 18.60);
+var empty = ee.Image().byte();
+var dist1 = ee.FeatureCollection("users/servirbz/aoi/lac/cam/bz/bz_districts"); // load District boundaries
+var cam_bnds = ee.FeatureCollection("users/servirbz/aoi/lac/cam/cam_borders_ln"); // load Int'l boundaries
+var pa1 = ee.FeatureCollection("users/servirbz/compil_ecosys/_prot_areas/bz_prot_areas_btfs_2014"); // load protected area boundaries
+
+var bounds = ee.Image().byte().paint({featureCollection:cam_bnds,width:2});
+var prot_areas = ee.Image().byte().paint({featureCollection:pa1,width:1});
+var dist2 = ee.Image().byte().paint({featureCollection:dist1,width:1});
+
+var s01 = ee.Image("users/servirbz/bz_topo/e755_01");
+var s02 = ee.Image("users/servirbz/bz_topo/e755_02");
+var s03 = ee.Image("users/servirbz/bz_topo/e755_03");
+var s04 = ee.Image("users/servirbz/bz_topo/e755_04");
+var s05 = ee.Image("users/servirbz/bz_topo/e755_05");
+var s06 = ee.Image("users/servirbz/bz_topo/e755_06");
+var s07 = ee.Image("users/servirbz/bz_topo/e755_07");
+var s08 = ee.Image("users/servirbz/bz_topo/e755_08");
+var s09 = ee.Image("users/servirbz/bz_topo/e755_09");
+var s10 = ee.Image("users/servirbz/bz_topo/e755_10");
+var s11 = ee.Image("users/servirbz/bz_topo/e755_11");
+var s12 = ee.Image("users/servirbz/bz_topo/e755_12");
+var s13 = ee.Image("users/servirbz/bz_topo/e755_13");
+var s14 = ee.Image("users/servirbz/bz_topo/e755_14");
+var s15 = ee.Image("users/servirbz/bz_topo/e755_15");
+var s16 = ee.Image("users/servirbz/bz_topo/e755_16");
+var s17 = ee.Image("users/servirbz/bz_topo/e755_17");
+var s18 = ee.Image("users/servirbz/bz_topo/e755_18");
+var s19 = ee.Image("users/servirbz/bz_topo/e755_19");
+var s20 = ee.Image("users/servirbz/bz_topo/e755_20");
+var s21 = ee.Image("users/servirbz/bz_topo/e755_21");
+var s22 = ee.Image("users/servirbz/bz_topo/e755_22");
+var s23 = ee.Image("users/servirbz/bz_topo/e755_23");
+var s24 = ee.Image("users/servirbz/bz_topo/e755_24");
+var s25 = ee.Image("users/servirbz/bz_topo/e755_25");
+var s26 = ee.Image("users/servirbz/bz_topo/e755_26_27");
+var s28 = ee.Image("users/servirbz/bz_topo/e755_28");
+var s29 = ee.Image("users/servirbz/bz_topo/e755_29");
+var s30 = ee.Image("users/servirbz/bz_topo/e755_30");
+var s31 = ee.Image("users/servirbz/bz_topo/e755_31");
+var s32 = ee.Image("users/servirbz/bz_topo/e755_32");
+var s33 = ee.Image("users/servirbz/bz_topo/e755_33");
+var s34 = ee.Image("users/servirbz/bz_topo/e755_34");
+var s35 = ee.Image("users/servirbz/bz_topo/e755_35");
+var s36 = ee.Image("users/servirbz/bz_topo/e755_36");
+var s37 = ee.Image("users/servirbz/bz_topo/e755_37");
+var s38 = ee.Image("users/servirbz/bz_topo/e755_38");
+var s39 = ee.Image("users/servirbz/bz_topo/e755_39");
+var s40 = ee.Image("users/servirbz/bz_topo/e755_40");
+var s41 = ee.Image("users/servirbz/bz_topo/e755_41");
+var s43 = ee.Image("users/servirbz/bz_topo/e755_42");
+var s44 = ee.Image("users/servirbz/bz_topo/e755_44");
+
+Map.addLayer(s01, {}, "Sheet_01", true);
+Map.addLayer(s02, {}, "Sheet_02", true);
+Map.addLayer(s03, {}, "Sheet_03", true);
+Map.addLayer(s04, {}, "Sheet_04", true);
+Map.addLayer(s05, {}, "Sheet_05", true);
+Map.addLayer(s06, {}, "Sheet_06", true);
+Map.addLayer(s07, {}, "Sheet_07", true);
+Map.addLayer(s08, {}, "Sheet_08", true);
+Map.addLayer(s09, {}, "Sheet_09", true);
+Map.addLayer(s10, {}, "Sheet_10", true);
+Map.addLayer(s11, {}, "Sheet_11", true);
+Map.addLayer(s12, {}, "Sheet_12", true);
+Map.addLayer(s13, {}, "Sheet_13", true);
+Map.addLayer(s14, {}, "Sheet_14", true);
+Map.addLayer(s15, {}, "Sheet_15", true);
+Map.addLayer(s16, {}, "Sheet_16", true);
+Map.addLayer(s17, {}, "Sheet_17", false);
+Map.addLayer(s18, {}, "Sheet_18", true);
+Map.addLayer(s19, {}, "Sheet_19", true);
+Map.addLayer(s20, {}, "Sheet_20", true);
+Map.addLayer(s21, {}, "Sheet_21", true);
+Map.addLayer(s23, {}, "Sheet_23", true);
+Map.addLayer(s24, {}, "Sheet_24", true);
+Map.addLayer(s25, {}, "Sheet_25", true);
+Map.addLayer(s26, {}, "Sheet_26", true);
+Map.addLayer(s28, {}, "Sheet_28", true);
+Map.addLayer(s29, {}, "Sheet_29", true);
+Map.addLayer(s30, {}, "Sheet_30", true);
+Map.addLayer(s31, {}, "Sheet_31", true);
+Map.addLayer(s32, {}, "Sheet_32", true);
+Map.addLayer(s33, {}, "Sheet_33", true);
+Map.addLayer(s34, {}, "Sheet_34", true);
+Map.addLayer(s35, {}, "Sheet_35", true);
+Map.addLayer(s36, {}, "Sheet_36", true);
+Map.addLayer(s37, {}, "Sheet_37", true);
+Map.addLayer(s38, {}, "Sheet_38", true);
+Map.addLayer(s39, {}, "Sheet_39", true);
+Map.addLayer(s40, {}, "Sheet_40", true);
+Map.addLayer(s41, {}, "Sheet_41", true);
+Map.addLayer(s43, {}, "Sheet_43", true);
+Map.addLayer(s44, {}, "Sheet_44", true);
+Map.addLayer(bounds,{palette: 'black'},"Int'l boundaries", false);
+Map.addLayer(dist2,{palette: 'white'},"District boundaries", false); // display District bounds in yellow
+Map.addLayer(prot_areas,{palette: "yellow"},'protected areas', false); // display prot. area boundaries as grey
+Map.centerObject(roi, 9);

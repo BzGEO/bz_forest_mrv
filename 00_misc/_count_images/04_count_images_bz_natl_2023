@@ -1,0 +1,7 @@
+// Last updated: 22 Aug. 2024
+
+var l8_l9 = ee.ImageCollection("LANDSAT/LC08/C02/T1_L2").merge(ee.ImageCollection("LANDSAT/LC09/C02/T1_L2"))
+    .filterDate(ee.Date("2023-01-01T00:01"), ee.Date('2023-06-30T23:59'))
+    .filter(ee.Filter.inList('WRS_PATH', [19])).filter(ee.Filter.inList('WRS_ROW', [47,48,49]));
+    
+print(l8_l9);

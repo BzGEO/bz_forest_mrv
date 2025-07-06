@@ -1,0 +1,232 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var bz_bounds = ee.FeatureCollection("projects/sica/aoi/limites_nacionales/bz_bounds_swbd"),
+    mangrove_pts = ee.FeatureCollection("projects/servir-sco-assets/assets/SCO_CA/BZ_MRV/FieldPoints/bz_mangrove_CEO_2000_2018"),
+    SERVIR_Mangrove = ee.FeatureCollection("users/servirbz/compil_ecosys/terrestrial/mangrove_cover/bz_mangroves_servir_2019_"),
+    GMW_Mangrove = ee.FeatureCollection("users/servirbz/compil_ecosys/terrestrial/mangrove_cover/bz_mangroves_gmw_2019"),
+    CATHALAC_Mangrove = ee.FeatureCollection("users/servirbz/compil_ecosys/terrestrial/mangrove_cover/bz_mangroves_cathalac_2018"),
+    SI_Mangrove = ee.FeatureCollection("users/servirbz/compil_ecosys/terrestrial/mangrove_cover/bz_mangroves_si_2020"),
+    ccdc_0 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/CCDC-SMA/Guatemala0_CCDCSMA_Mosaic_2023"),
+    ccdc_2600 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/CCDC-SMA/Guatemala10000_CCDCSMA_Mosaic_2023"),
+    ccdc_10000 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/CCDC-SMA/Guatemala2600_CCDCSMA_Mosaic_2023"),
+    landtrendr_baseline = ee.Image("projects/servir-sco-assets/assets/SCO_CA/BZ_MRV/LandTrendr_BZ/Belize_Baseline_DrySeason_19842024_NBR"),
+    landtrendr_bestmodel05 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/BZ_MRV/LandTrendr_BZ/Belize_BestModel05_DrySeason_19842024_NBR"),
+    landtrendr_bestmodel125 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/BZ_MRV/LandTrendr_BZ/Belize_BestModel125_DrySeason_19842024_NBR"),
+    landtrendr_bestmodel1 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/BZ_MRV/LandTrendr_BZ/Belize_BestModel1_DrySeason_19842024_NBR"),
+    landtrendr_maxseg12 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/BZ_MRV/LandTrendr_BZ/Belize_MaxSeg12_DrySeason_19842024_NBR"),
+    landtrendr_maxseg4 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/BZ_MRV/LandTrendr_BZ/Belize_MaxSeg4_DrySeason_19842024_NBR"),
+    landtrendr_maxseg6 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/BZ_MRV/LandTrendr_BZ/Belize_MaxSeg6_DrySeason_19842024_NBR"),
+    landtrendr_recovery025 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/BZ_MRV/LandTrendr_BZ/Belize_Recovery025_DrySeason_19842024_NBR"),
+    landtrendr_recovery05 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/BZ_MRV/LandTrendr_BZ/Belize_Recovery05_DrySeason_19842024_NBR"),
+    landtrendr_recovery075 = ee.Image("projects/servir-sco-assets/assets/SCO_CA/BZ_MRV/LandTrendr_BZ/Belize_Recovery075_DrySeason_19842024_NBR"),
+    mangrove_pts2023 = ee.FeatureCollection("projects/servir-sco-assets/assets/SCO_CA/BZ_MRV/FieldPoints/AD_2000_2023");
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+// Assess agreement between LandTrendr change detection and Belize CEO points over mangroves
+// 20 November 2023 - Lauren Carey
+// 18 March 2024 - Christine Evans -- updated new CCDC-SMA runs to include all available imagery from 2023
+
+/* Table of contents
+(1) Import data and define viz params
+(2) Separate stable from change points in CEO datasat 
+(3) Identify change points that intersect with change pixels (agreement)
+(4) Idenitfy stable points that intersect with change pixels (false positives)
+(5) Optional export 
+*/
+
+// ********************* (1) Import data and define viz params *********************************
+// Import boundaries and data 
+var aoi = SERVIR_Mangrove; // 2019
+// var aoi = GMW_Mangrove; // 2019
+// var aoi = CATHALAC_Mangrove; // 2018
+// var aoi = SI_Mangrove; // 2020
+var mangroves = mangrove_pts2023.filterBounds(aoi); 
+var ccdc0_b1 = ccdc_0.select('year').clip(aoi)
+var ccdc2600_b1 = ccdc_2600.select('year').clip(aoi)
+var ccdc10000_b1 = ccdc_10000.select('year').clip(aoi)
+var landtrendr_baseline_b1 = landtrendr_baseline.select('yod').clip(aoi)
+var landtrendr_bestmodel05_b1 = landtrendr_bestmodel05.select('yod').clip(aoi)
+var landtrendr_bestmodel125_b1 = landtrendr_bestmodel125.select('yod').clip(aoi)
+var landtrendr_bestmodel1_b1 = landtrendr_bestmodel1.select('yod').clip(aoi)
+var landtrendr_maxseg12_b1 = landtrendr_maxseg12.select('yod').clip(aoi)
+var landtrendr_maxseg4_b1 = landtrendr_maxseg4.select('yod').clip(aoi)
+var landtrendr_maxseg6_b1 = landtrendr_maxseg6.select('yod').clip(aoi)
+var landtrendr_recovery025_b1 = landtrendr_recovery025.select('yod').clip(aoi)
+var landtrendr_recovery05_b1 = landtrendr_recovery05.select('yod').clip(aoi)
+var landtrendr_recovery075_b1 = landtrendr_recovery075.select('yod').clip(aoi)
+
+var ccdc0 = ccdc0_b1.updateMask(ccdc0_b1.gt(2018));
+var ccdc2600 = ccdc2600_b1.updateMask(ccdc2600_b1.gt(2018)); 
+var ccdc10000 = ccdc10000_b1.updateMask(ccdc10000_b1.gt(2018));
+var landtrendrBaseline = landtrendr_baseline_b1.updateMask(landtrendr_baseline_b1.gt(2018));
+var landtrendrBestmodel05 = landtrendr_bestmodel05_b1.updateMask(landtrendr_bestmodel05_b1.gt(2018));
+var landtrendrBestmodel125 = landtrendr_bestmodel125_b1.updateMask(landtrendr_bestmodel125_b1.gt(2018));
+var landtrendrBestmodel1 = landtrendr_bestmodel1_b1.updateMask(landtrendr_bestmodel1_b1.gt(2018));
+var landtrendrMaxseg12 = landtrendr_maxseg12_b1.updateMask(landtrendr_maxseg12_b1.gt(2018));
+var landtrendrMaxseg4 = landtrendr_maxseg4_b1.updateMask(landtrendr_maxseg4_b1.gt(2018));
+var landtrendrMaxseg6 = landtrendr_maxseg6_b1.updateMask(landtrendr_maxseg6_b1.gt(2018));
+var landtrendrRecovery025 = landtrendr_recovery025_b1.updateMask(landtrendr_recovery025_b1.gt(2018));
+var landtrendrRecovery05 = landtrendr_recovery05_b1.updateMask(landtrendr_recovery05_b1.gt(2018));
+var landtrendrRecovery075 = landtrendr_recovery075_b1.updateMask(landtrendr_recovery075_b1.gt(2018));
+
+// Define visualization parameters for CCDC-SMA results 
+var vis = {min: 2018, max: 2023, palette: ['#FF33FF', '#4B0082', '#0000FF', '#00FF00', '#FFFF00', '#FF7F00', '#FF0000']};
+// ********************** (2) Separate stable from change points in CEO dataset ************************
+
+/* This was used to verify that defining change points as 
+those that were not equal to FF in 2018 was a reasonable assumption, i.e.
+that no points changed and went back to FF between 2000 - 2018*/
+
+// var change01 = mangroves.filter(ee.Filter.neq('LUC2001', 'FF'));
+// var change02 = mangroves.filter(ee.Filter.neq('LUC2002', 'FF'));
+// var change03 = mangroves.filter(ee.Filter.neq('LUC2003', 'FF'));
+// var change04 = mangroves.filter(ee.Filter.neq('LUC2004', 'FF'));
+// var change05 = mangroves.filter(ee.Filter.neq('LUC2005', 'FF'));
+// var change06 = mangroves.filter(ee.Filter.neq('LUC2006', 'FF'));
+// var change07 = mangroves.filter(ee.Filter.neq('LUC2007', 'FF'));
+// var change08 = mangroves.filter(ee.Filter.neq('LUC2008', 'FF'));
+// var change09 = mangroves.filter(ee.Filter.neq('LUC2009', 'FF'));
+// var change10 = mangroves.filter(ee.Filter.neq('LUC2010', 'FF'));
+// var change11 = mangroves.filter(ee.Filter.neq('LUC2011', 'FF'));
+// var change12 = mangroves.filter(ee.Filter.neq('LUC2012', 'FF'));
+// var change11 = mangroves.filter(ee.Filter.neq('LUC2011', 'FF'));
+// var change12 = mangroves.filter(ee.Filter.neq('LUC2012', 'FF'));
+// var change13 = mangroves.filter(ee.Filter.neq('LUC2013', 'FF'));
+// var change14 = mangroves.filter(ee.Filter.neq('LUC2014', 'FF'));
+// var change15 = mangroves.filter(ee.Filter.neq('LUC2015', 'FF'));
+// var change16 = mangroves.filter(ee.Filter.neq('LUC2016', 'FF'));
+// var change17 = mangroves.filter(ee.Filter.neq('LUC2017', 'FF'));
+
+// These are the points that changed from mangrove to something else and never went back to mangrove
+var change18 = mangroves.filter(ee.Filter.eq('Un_Sim_plo', 'Non_Mangrove'));
+
+// These are the points that remained mangrove from 2000-2018 
+var stable18 = mangroves.filter(ee.Filter.eq('Un_Sim_plo', 'Mangrove'));
+
+
+// ********************** (3) Identify change points that intersect with change pixels *********************
+
+// This is to identify where CCDC-SMA has accurately identified change 
+// Note: There are 710 points total 
+// Note: There are just 5 change points from 2000 - 2018 
+
+// Use sampleRegions to select change points that are at the center of change pixels
+var changeAgree_ccdc0 = ccdc0.sampleRegions({collection:change18, scale:30, geometries: true});
+print(changeAgree_ccdc0, 'Change Agreement Threshold ccdc0');
+var changeAgree_ccdc2600 = ccdc2600.sampleRegions({collection:change18, scale:30, geometries: true});
+print(changeAgree_ccdc2600, 'Change Agreement Threshold ccdc2600');
+var changeAgree_ccdc10000 = ccdc10000.sampleRegions({collection:change18, scale:30, geometries: true});
+print(changeAgree_ccdc10000, 'Change Agreement Threshold ccdc10000');
+
+var changeAgree_landtrendrBaseline = landtrendrBaseline.sampleRegions({collection:change18, scale:30, geometries: true});
+print(changeAgree_landtrendrBaseline, 'Change Agreement Threshold landtrendrBaseline');
+var changeAgree_landtrendrBestmodel05 = landtrendrBestmodel05.sampleRegions({collection:change18, scale:30, geometries: true});
+print(changeAgree_landtrendrBestmodel05, 'Change Agreement Threshold landtrendrBestmodel05');
+var changeAgree_landtrendrBestmodel125 = landtrendrBestmodel125.sampleRegions({collection:change18, scale:30, geometries: true});
+print(changeAgree_landtrendrBestmodel125, 'Change Agreement Threshold landtrendrBestmodel125');
+var changeAgree_landtrendrBestmodel1 = landtrendrBestmodel1.sampleRegions({collection:change18, scale:30, geometries: true});
+print(changeAgree_landtrendrBestmodel1, 'Change Agreement Threshold landtrendrBestmodel1');
+var changeAgree_landtrendrMaxseg12 = landtrendrMaxseg12.sampleRegions({collection:change18, scale:30, geometries: true});
+print(changeAgree_landtrendrMaxseg12, 'Change Agreement Threshold landtrendrMaxseg12');
+var changeAgree_landtrendrMaxseg4 = landtrendrMaxseg4.sampleRegions({collection:change18, scale:30, geometries: true});
+print(changeAgree_landtrendrMaxseg4, 'Change Agreement Threshold landtrendrMaxseg4');
+var changeAgree_landtrendrMaxseg6 = landtrendrMaxseg6.sampleRegions({collection:change18, scale:30, geometries: true});
+print(changeAgree_landtrendrMaxseg6, 'Change Agreement Threshold landtrendrMaxseg6');
+var changeAgree_landtrendrRecovery025 = landtrendrRecovery025.sampleRegions({collection:change18, scale:30, geometries: true});
+print(changeAgree_landtrendrRecovery025, 'Change Agreement Threshold landtrendrRecovery025');
+var changeAgree_landtrendrRecovery05 = landtrendrRecovery05.sampleRegions({collection:change18, scale:30, geometries: true});
+print(changeAgree_landtrendrRecovery05, 'Change Agreement Threshold landtrendrRecovery05');
+var changeAgree_landtrendrRecovery075 = landtrendrRecovery075.sampleRegions({collection:change18, scale:30, geometries: true});
+print(changeAgree_landtrendrRecovery075, 'Change Agreement Threshold landtrendrRecovery075');
+
+// ********************** (4) Idenitfy stable points that intersect with change pixels **********************
+
+// This is to identify false positives in the CCDC-SMA results 
+var stableDisagree_ccdc0 = ccdc0.sampleRegions({collection:stable18, scale:30, geometries: true});
+print(stableDisagree_ccdc0, 'Stable Disagreement Threshold ccdc0');
+var stableDisagree_ccdc2600 = ccdc2600.sampleRegions({collection:stable18, scale:30, geometries: true});
+print(stableDisagree_ccdc2600, 'Stable Disagreement Threshold ccdc2600');
+var stableDisagree_ccdc10000 = ccdc10000.sampleRegions({collection:stable18, scale:30, geometries: true});
+print(stableDisagree_ccdc10000, 'Stable Disagreement Threshold ccdc10000');
+
+var stableDisagree_landtrendrBaseline = landtrendrBaseline.sampleRegions({collection:stable18, scale:30, geometries: true});
+print(stableDisagree_landtrendrBaseline, 'Stable Disagreement Threshold landtrendrBaseline');
+var stableDisagree_landtrendrBestmodel05 = landtrendrBestmodel05.sampleRegions({collection:stable18, scale:30, geometries: true});
+print(stableDisagree_landtrendrBestmodel05, 'Stable Disagreement Threshold landtrendrBestmodel05');
+var stableDisagree_landtrendrBestmodel125 = landtrendrBestmodel125.sampleRegions({collection:stable18, scale:30, geometries: true});
+print(stableDisagree_landtrendrBestmodel125, 'Stable Disagreement Threshold landtrendrBestmodel125');
+var stableDisagree_landtrendrBestmodel1 = landtrendrBestmodel1.sampleRegions({collection:stable18, scale:30, geometries: true});
+print(stableDisagree_landtrendrBestmodel1, 'Stable Disagreement Threshold landtrendrBestmodel1');
+var stableDisagree_landtrendrMaxseg12 = landtrendrMaxseg12.sampleRegions({collection:stable18, scale:30, geometries: true});
+print(stableDisagree_landtrendrMaxseg12, 'Stable Disagreement Threshold landtrendrMaxseg12');
+var stableDisagree_landtrendrMaxseg4 = landtrendrMaxseg4.sampleRegions({collection:stable18, scale:30, geometries: true});
+print(stableDisagree_landtrendrMaxseg4, 'Stable Disagreement Threshold landtrendrMaxseg4');
+var stableDisagree_landtrendrMaxseg6 = landtrendrMaxseg6.sampleRegions({collection:stable18, scale:30, geometries: true});
+print(stableDisagree_landtrendrMaxseg6, 'Stable Disagreement Threshold landtrendrMaxseg6');
+var stableDisagree_landtrendrRecovery025 = landtrendrRecovery025.sampleRegions({collection:stable18, scale:30, geometries: true});
+print(stableDisagree_landtrendrRecovery025, 'Stable Disagreement Threshold landtrendrRecovery025');
+var stableDisagree_landtrendrRecovery05 = landtrendrRecovery05.sampleRegions({collection:stable18, scale:30, geometries: true});
+print(stableDisagree_landtrendrRecovery05, 'Stable Disagreement Threshold landtrendrRecovery05');
+var stableDisagree_landtrendrRecovery075 = landtrendrRecovery075.sampleRegions({collection:stable18, scale:30, geometries: true});
+print(stableDisagree_landtrendrRecovery075, 'Stable Disagreement Threshold landtrendrRecovery075');
+
+
+// ********************** (5) Visualize on the map *************************************************
+
+// Center map and add layers 
+Map.centerObject(aoi, 9);
+
+Map.addLayer(ccdc0, vis, 'CCDC-SMA 0');
+Map.addLayer(ccdc2600, vis, 'CCDC-SMA 2600', false);
+Map.addLayer(ccdc10000, vis, 'CCDC-SMA 10000', false);
+Map.addLayer(landtrendrBaseline, vis, 'landtrendrBaseline', false);
+Map.addLayer(landtrendrBestmodel05, vis, 'landtrendrBestmodel05', false);
+Map.addLayer(landtrendrBestmodel125, vis, 'landtrendrBestmodel125', false);
+Map.addLayer(landtrendrBestmodel1, vis, 'landtrendrBestmodel1', false);
+Map.addLayer(landtrendrMaxseg12, vis, 'landtrendrMaxseg12', false);
+Map.addLayer(landtrendrMaxseg4, vis, 'landtrendrMaxseg4', false);
+Map.addLayer(landtrendrMaxseg6, vis, 'landtrendrMaxseg6', false);
+Map.addLayer(landtrendrRecovery025, vis, 'landtrendrRecovery025', false);
+Map.addLayer(landtrendrRecovery05, vis, 'landtrendrRecovery05', false);
+Map.addLayer(landtrendrRecovery075, vis, 'landtrendrRecovery075', false);
+
+Map.addLayer(stable18, {}, 'Mangrove stable pts', false);
+Map.addLayer(change18, {}, 'Mangrove change pts', false);
+
+Map.addLayer(changeAgree_ccdc0, {}, 'Change Point Agreement ccdc0', false);
+Map.addLayer(changeAgree_ccdc2600, {}, 'Change Point Agreement ccdc2600', false);
+Map.addLayer(changeAgree_ccdc10000, {}, 'Change Point Agreement ccdc10000', false);
+Map.addLayer(changeAgree_landtrendrBaseline, {}, 'Change Point Agreement landtrendrBaseline', false);
+Map.addLayer(changeAgree_landtrendrBestmodel05, {}, 'Change Point Agreement landtrendrBestmodel05', false);
+Map.addLayer(changeAgree_landtrendrBestmodel125, {}, 'Change Point Agreement landtrendrBestmodel125', false);
+Map.addLayer(changeAgree_landtrendrBestmodel1, {}, 'Change Point Agreement landtrendrBestmodel1', false);
+Map.addLayer(changeAgree_landtrendrMaxseg12, {}, 'Change Point Agreement landtrendrMaxseg12', false);
+Map.addLayer(changeAgree_landtrendrMaxseg4, {}, 'Change Point Agreement landtrendrMaxseg4', false);
+Map.addLayer(changeAgree_landtrendrMaxseg6, {}, 'Change Point Agreement landtrendrMaxseg6', false);
+Map.addLayer(changeAgree_landtrendrRecovery025, {}, 'Change Point Agreement landtrendrRecovery025', false);
+Map.addLayer(changeAgree_landtrendrRecovery05, {}, 'Change Point Agreement landtrendrRecovery05', false);
+Map.addLayer(changeAgree_landtrendrRecovery075, {}, 'Change Point Agreement landtrendrRecovery075', false);
+
+Map.addLayer(stableDisagree_ccdc0, {}, 'Stable Point Disagreement ccdc0', false);
+Map.addLayer(stableDisagree_ccdc2600, {}, 'Stable Point Disagreement ccdc2600', false);
+Map.addLayer(stableDisagree_ccdc10000, {}, 'Stable Point Disagreement ccdc10000', false);
+Map.addLayer(stableDisagree_landtrendrBaseline, {}, 'Stable Point Disagreement landtrendrBaseline', false);
+Map.addLayer(stableDisagree_landtrendrBestmodel05, {}, 'Stable Point Disagreement landtrendrBestmodel05', false);
+Map.addLayer(stableDisagree_landtrendrBestmodel125, {}, 'Stable Point Disagreement landtrendrBestmodel125', false);
+Map.addLayer(stableDisagree_landtrendrBestmodel1, {}, 'Stable Point Disagreement landtrendrBestmodel1', false);
+Map.addLayer(stableDisagree_landtrendrMaxseg12, {}, 'Stable Point Disagreement landtrendrMaxseg12', false);
+Map.addLayer(stableDisagree_landtrendrMaxseg4, {}, 'Stable Point Disagreement landtrendrMaxseg4', false);
+Map.addLayer(stableDisagree_landtrendrMaxseg6, {}, 'Stable Point Disagreement landtrendrMaxseg6', false);
+Map.addLayer(stableDisagree_landtrendrRecovery025, {}, 'Stable Point Disagreement landtrendrRecovery025', false);
+Map.addLayer(stableDisagree_landtrendrRecovery05, {}, 'Stable Point Disagreement landtrendrRecovery05', false);
+Map.addLayer(stableDisagree_landtrendrRecovery075, {}, 'Stable Point Disagreement landtrendrRecovery075', false);
+
+var opacity = 0.45
+Map.addLayer(aoi, {}, 'Selected Mangrove Extent', true, opacity)
+// ********************* (5) Optional export section ******************************************************
+
+// Export.table.toDrive({
+//   collection: aoi, 
+//   description: 'bz_pts', 
+//   folder: 'GEE_exports', 
+//   fileNamePrefix: 'bz_ceo_pts', 
+//   fileFormat: 'CSV', 
+//   })

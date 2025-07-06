@@ -1,0 +1,147 @@
+// Extract forest cover data for Belize for 2023 using Unsupervised Machine Learning
+// Questions? Contact eac0021@uah.edu or emil.cherrington@nasa.gov
+// Last updated: 22.09.2024 
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Load requisite packages
+var a = require('users/bzgeo/examples:_ancillary/mes'); // Loads various ancillary datasets
+var b = require('users/servirbz/packages:sma_std3'); // Loads functions for classifying imagery based on SMA
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Define regions of interest (ROIs) -> interchangeable w/ areas of interest (AOIs)
+var roi = ee.Geometry.Polygon([[[-87.68, 19.289437],[-87.68, 15.585054],[-89.991352, 15.585054],[-89.991352, 19.289437]]]); // BZ bounding box ROI
+var roi2 = ee.FeatureCollection("users/servirbz/aoi/lac/cam/bz/bz_bounds_swbd00"); // Belize shapefile ROI
+
+// Load land mask to aid classification
+var msk = ee.Image('UMD/hansen/global_forest_change_2015').select('datamask').eq(1);
+
+// Load Landsat image collections
+var coll_l8 = ee.ImageCollection('LANDSAT/LC08/C02/T1_L2').filterDate("2023-01-01","2023-06-30");
+var coll_l9 = ee.ImageCollection('LANDSAT/LC09/C02/T1_L2').filterDate("2023-01-01","2023-06-30");
+var coll_l8_l9 = coll_l8.merge(coll_l9); // merges the Landsat-8 and Landsat-9 data into a single collection
+
+// print(coll_l8_l9.filterBounds(roi2)); // Prints a list of all of the Landsat-8 and -9 scenes in the domain + timeframe
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Functions: Cloud mask and scale factors
+function applyScaleFactors(image) {
+  var qaMask = image.select('QA_PIXEL').bitwiseAnd(parseInt('11111', 2)).eq(0);
+  var saturationMask = image.select('QA_RADSAT').eq(0);
+  var opticalBands = image.select('SR_B.').multiply(0.0000275).add(-0.2).multiply(10000);
+  var thermalBands = image.select('ST_B.*').multiply(0.00341802).add(149.0);
+  return image.addBands(opticalBands, null, true).addBands(thermalBands, null, true)
+              .updateMask(qaMask).updateMask(saturationMask).toInt16()
+              .select(['SR_B2','SR_B3','SR_B4','SR_B5','SR_B6','SR_B7'],['B1','B2','B3','B4','B5','B7']);}
+
+// Applies functions
+var l8_l9_2023 = coll_l8_l9.map(applyScaleFactors).median().clip(roi);
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Function for performing K-means unsupervised classification -> can be mapped across an entire image collection*
+function unsuper(img, no) {
+  return img
+            //.updateMask(msk)
+            .cluster(ee.Clusterer.wekaKMeans(no)
+            .train(img.sample({region:roi,scale:30,numPixels:3000})))
+            .clip(roi)}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+var fc2 = unsuper(l8_l9_2023, 2);
+var fc3 = unsuper(l8_l9_2023, 3);
+var fc4 = unsuper(l8_l9_2023, 4);
+var fc5 = unsuper(l8_l9_2023, 5);
+var fc6 = unsuper(l8_l9_2023, 6);
+var fc7 = unsuper(l8_l9_2023, 7);
+var fc8 = unsuper(l8_l9_2023, 8);
+var fc9 = unsuper(l8_l9_2023, 9);
+var fc10 = unsuper(l8_l9_2023, 10);
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Estimate forest area and % forest cover
+
+// Define function for extracting forest cover statistics and printing those statistics in the Console on the right ->
+
+function fstat(img,res,aoi,year) {
+// NOTE: For this function to work, we need to supply the forest cover map, the spatial resolution, AOI, and the analysis year.
+
+// Extract area for use in % forest cover calculations below
+var area_bz = ee.Number(ee.FeatureCollection(roi2).geometry().area().divide(1000000)); // Area of Belize = 22,230 km2
+
+// Extract forest area
+var f_stat = ee.Number(img.clip(aoi).select('cluster').eq(1).multiply(ee.Image.pixelArea()).reduceRegion({
+  geometry: aoi.geometry(), reducer: ee.Reducer.sum(), scale: res, maxPixels: 1e18}).get('constant')).divide(1000000);
+
+// Extract non-forest area
+var nf_stat = ee.Number(img.clip(aoi).select('cluster').eq(0).multiply(ee.Image.pixelArea()).reduceRegion({
+  geometry: aoi.geometry(), reducer: ee.Reducer.sum(), scale: res, maxPixels: 1e18}).get('constant')).divide(1000000);
+
+// 
+print('Year: ', year); // This prints the analysis year (defined by the operator)
+print('est. forest area: ', f_stat, 'sq. km'); // This prints the forest cover extent in square kilometers
+print('est. % forest cover: ', f_stat.divide(area_bz).multiply(100),'percent'); // This prints the forest cover extent in percent
+//print('est. % non-forest cover: ', nf_stat.divide(roi).multiply(100),'percent'); // This prints the non-forest cover extent in percent
+}
+
+// Extract forest cover statistics using previously defined function
+
+/*
+fstat(b.for_sma_60(b.sma_(l8_l9_2023)).reproject({crs: 'EPSG: 32616', scale: 100})
+                   .reduceResolution({reducer: ee.Reducer.mode(), maxPixels: 10000, bestEffort: true}),
+                   100, roi2, 2024);
+*/
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Define parameters for visualizing the data in the map viewer below
+
+// Landsat visualization palettes
+
+// var viz_543 = {bands: ['B5','B4','B3'],min: 0, max: 4500}; // This is a simple visualization palette
+var viz_543 = {bands: ['B5','B4','B3'], min: [730, 1800, -740], max:[2200, 3800, 2000]}; // This palette applies a nice histogram stretch
+
+// Palettes for unsupervised classifications
+var pal_fc2 = {min:0,max:1,palette:["008000","FFA07A"]};
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Add data to map viewer
+Map.setCenter(-88.1433, 17.3638, 9);
+
+// Load Landsat mosaic
+Map.addLayer(l8_l9_2023, viz_543, 'L8_L9_mosaic_2023', true);
+
+// Load unsupervised classifications
+Map.addLayer(fc2, pal_fc2, 'FC_unsuper_cl2*', false);
+Map.addLayer(fc2.randomVisualizer(), {}, 'FC_unsuper_cl2', false);
+Map.addLayer(fc3.randomVisualizer(), {}, 'FC_unsuper_cl3', false);
+Map.addLayer(fc4.randomVisualizer(), {}, 'FC_unsuper_cl4', true);
+Map.addLayer(fc5.randomVisualizer(), {}, 'FC_unsuper_cl5', false);
+Map.addLayer(fc6.randomVisualizer(), {}, 'FC_unsuper_cl6', false);
+Map.addLayer(fc7.randomVisualizer(), {}, 'FC_unsuper_cl7', false);
+Map.addLayer(fc8.randomVisualizer(), {}, 'FC_unsuper_cl8', false);
+Map.addLayer(fc9.randomVisualizer(), {}, 'FC_unsuper_cl9', false);
+Map.addLayer(fc10.randomVisualizer(), {}, 'FC_unsuper_cl10', false);
+
+// Load ancillary reference datasets
+Map.addLayer(a.bz_ws_ln.clip(roi),{palette: "blue"},"Watersheds (mainland)", false);
+Map.addLayer(a.pa_bz_ln.clip(roi),{palette: "yellow"},"Prot. areas", false);
+Map.addLayer(a.bz_dist_ln2.clip(roi),{palette: "white"},"District boundaries", false);
+Map.addLayer(a.bnds_intl_ln2.clip(roi),{palette: "white"},"Int'l boundaries", true);
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Export data to Google Drive
+
+/*
+Export.image.toDrive({'image': l8_l9_2023, 'region': roi, 'scale': 30, 'description': 'export_landsat_2023',
+    'folder': 'x_tmp_gee_outputs', 'fileNamePrefix': 'bz_landsat_202306_030m', 'crs': 'EPSG:32616', 'maxPixels': 1e13});
+
+*/
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

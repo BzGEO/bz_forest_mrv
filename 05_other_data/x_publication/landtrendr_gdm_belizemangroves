@@ -1,0 +1,119 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var aoi = 
+    /* color: #d63000 */
+    /* displayProperties: [
+      {
+        "type": "rectangle"
+      }
+    ] */
+    ee.Geometry.Polygon(
+        [[[-89.46126065920917, 18.646695073445468],
+          [-89.46126065920917, 15.771566153438261],
+          [-87.65950284670917, 15.771566153438261],
+          [-87.65950284670917, 18.646695073445468]]], null, false);
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+//######################################################################################################## 
+//#                                                                                                    #\\
+//#                           LANDTRENDR GREATEST DISTURBANCE MAPPING                                  #\\
+//#                                                                                                    #\\
+//########################################################################################################
+// updateed for Belize by Christine Evans | cae0004@uah.edu
+// date: 07/16/2024
+
+// date: 2018-10-07
+// author: Justin Braaten | jstnbraaten@gmail.com
+//         Zhiqiang Yang  | zhiqiang.yang@oregonstate.edu
+//         Robert Kennedy | rkennedy@coas.oregonstate.edu
+// parameter definitions: https://emapr.github.io/LT-GEE/api.html#getchangemap
+// website: https://github.com/eMapR/LT-GEE
+// notes: 
+//   - you must add the LT-GEE API to your GEE account to run this script. 
+//     Visit this URL to add it:
+//     https://code.earthengine.google.com/?accept_repo=users/emaprlab/public
+//   - use this app to help parameterize: 
+//     https://emaprlab.users.earthengine.app/view/lt-gee-change-mapper
+
+
+//##########################################################################################
+// START INPUTS
+//##########################################################################################
+
+// define collection parameters
+var startYear = 2000;
+var endYear = 2024;
+var startDay = '11-01';
+var endDay = '04-30';
+var index = 'NDVI';
+var maskThese = ['cloud', 'shadow', 'snow', 'water'];
+
+// define landtrendr parameters
+var runParams = { 
+  maxSegments:            4,
+  spikeThreshold:         0.9,
+  vertexCountOvershoot:   3,
+  preventOneYearRecovery: true,
+  recoveryThreshold:      0.50,
+  pvalThreshold:          0.05,
+  bestModelProportion:    1,
+  minObservationsNeeded:  3
+};
+
+// define change parameters
+var changeParams = {
+  delta:  'gain',
+  sort:   'greatest',
+  year:   {checked:true, start:2000, end:2024},
+  mag:    {checked:true, value:300,  operator:'>'},
+  dur:    {checked:true, value:4,    operator:'<'},
+  preval: {checked:true, value:300,  operator:'>'},
+  mmu:    {checked:true, value:1},
+  
+};
+
+//##########################################################################################
+// END INPUTS
+//##########################################################################################
+
+// load the LandTrendr.js module
+var ltgee = require('users/emaprlab/public:Modules/LandTrendr.js'); 
+
+// add index to changeParams object
+changeParams.index = index;
+
+// run landtrendr
+var lt = ltgee.runLT(startYear, endYear, startDay, endDay, aoi, index, [], runParams, maskThese);
+
+// get the change map layers
+var changeImg = ltgee.getChangeMap(lt, changeParams);
+
+// set visualization dictionaries
+var palette = ['#9400D3', '#4B0082', '#0000FF', '#00FF00', '#FFFF00', '#FF7F00', '#FF0000'];
+var yodVizParms = {
+  min: startYear,
+  max: endYear,
+  palette: palette
+};
+
+var magVizParms = {
+  min: 200,
+  max: 800,
+  palette: palette
+};
+
+// display the change attribute map - note that there are other layers - print changeImg to console to see all
+Map.centerObject(aoi, 11);
+Map.addLayer(changeImg.select(['mag']), magVizParms, 'Magnitude of Change');
+Map.addLayer(changeImg.select(['yod']), yodVizParms, 'Year of Detection');
+
+
+// export change data to google drive
+
+var exportImg = changeImg.clip(aoi).short();
+Export.image.toDrive({
+  image: exportImg, 
+  description: 'bz_landtrendr_ms4rt5bmp1mmu1_gain', 
+  folder: 'projects/servir-sco-assets/assets/SCO_CA/Publication',
+  region: aoi, 
+  scale: 30, 
+  maxPixels: 1e13
+});

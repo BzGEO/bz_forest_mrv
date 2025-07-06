@@ -1,0 +1,77 @@
+// Burn scar mapping script: 2019, 2020, 2021
+// Last updated: 15 Sept. 2022
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// dNBR interpretation:
+// https://un-spider.org/advisory-support/recommended-practices/recommended-practice-burn-severity/in-detail/normalized-burn-ratio
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+var roi = ee.Geometry.Rectangle(-87.70, 15.73, -89.30, 18.60);
+var roi2 = ee.FeatureCollection("users/servirbz/aoi/lac/cam/bz/bz_bounds_swbd"); // Belize polygon boundaries
+
+/////
+
+var fro = ['Nadir_Reflectance_Band3','Nadir_Reflectance_Band4','Nadir_Reflectance_Band1','Nadir_Reflectance_Band2','Nadir_Reflectance_Band6','Nadir_Reflectance_Band7'];
+var to = ['B1','B2','B3','B4','B5','B7'];
+
+/////
+var mcd43 = ee.ImageCollection("MODIS/006/MCD43A4").select(fro,to);
+//var mcd43_2019_ = mcd43.filterDate("2019-01-01T00:00","2019-12-31T23:59");
+
+function nbr(img) {return img.normalizedDifference(["B4","B7"]).select(['nd'],['nbr']).clip(roi).clip(roi2)}
+
+
+var mcd43_2019 = mcd43.filterDate('2019-01-01T00:00','2019-05-31T23:29').map(nbr);
+var mcd43_2020 = mcd43.filterDate('2020-01-01T00:00','2020-05-31T23:29').map(nbr);
+var mcd43_2021 = mcd43.filterDate('2021-01-01T00:00','2021-05-31T23:29').map(nbr);
+//print(mcd43_2019);
+
+var mcd43_2019_max = mcd43_2019.max();
+var mcd43_2020_max = mcd43_2020.max();
+var mcd43_2021_max = mcd43_2021.max();
+
+var mcd43_2019_med = mcd43_2019.median();
+var mcd43_2020_med = mcd43_2020.median();
+var mcd43_2021_med = mcd43_2021.median();
+
+var mcd43_2019_min = mcd43_2019.min();
+var mcd43_2020_min = mcd43_2020.min();
+var mcd43_2021_min = mcd43_2021.min();
+
+var mcd43_2020_dnbr1 = mcd43_2020_max.subtract(mcd43_2020_min).clip(roi2);
+var mcd43_2020_dnbr2 = mcd43_2020_med.subtract(mcd43_2020_min).clip(roi2);
+
+var mcd43_2020_dnbr1_ = mcd43_2020_dnbr1.mask(mcd43_2020_dnbr1.gte(0.44));
+var mcd43_2020_dnbr2_ = mcd43_2020_dnbr2.mask(mcd43_2020_dnbr2.gte(0.44));
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+var pal_dnbr = {min: -0.5, max: 1.3, palette: ['red','orange','silver','yellow','lime','limegreen']}; // DNBR palette (1)
+
+var pal_dnbr0 = {min: -0.5, max: 1.3, palette: ['limegreen','lime','silver','yellow','orange','red','purple']}; // DNBR palette (1)
+var pal_dnbr2 = {min: 0.2, max: 1.3, palette: ['red']}; // DNBR palette (2)
+var pal_dnbr3 = {min: 0.1, max: 1.3, palette: ['orange']}; // DNBR palette (3)
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+Map.addLayer(mcd43_2019_max, pal_dnbr, 'NBR_mcd43_2019_max', false);
+Map.addLayer(mcd43_2020_max, pal_dnbr, 'NBR_mcd43_2020_max', false);
+Map.addLayer(mcd43_2021_max, pal_dnbr, 'NBR_mcd43_2021_max', false);
+
+Map.addLayer(mcd43_2019_min, pal_dnbr, 'NBR_mcd43_2019_min', false);
+Map.addLayer(mcd43_2020_min, pal_dnbr, 'NBR_mcd43_2020_min', false);
+Map.addLayer(mcd43_2021_min, pal_dnbr, 'NBR_mcd43_2021_min', false);
+
+Map.addLayer(mcd43_2020_dnbr1, pal_dnbr0, 'dNBR_1_mcd43_2020', false);
+Map.addLayer(mcd43_2020_dnbr2, pal_dnbr0, 'dNBR_2_mcd43_2020', false);
+Map.addLayer(mcd43_2020_dnbr1_, pal_dnbr2, 'dNBR_1_mcd43_2020_', true);
+Map.addLayer(mcd43_2020_dnbr2_, pal_dnbr2, 'dNBR_2_mcd43_2020_', false);
+
+Map.addLayer(roi, {palette: ['red']},'AOI', false);
+
+Map.setOptions('SATELLITE');
+Map.centerObject(roi, 8);
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

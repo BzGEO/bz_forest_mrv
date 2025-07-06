@@ -1,0 +1,52 @@
+////////////////////////////////////////////////////////////////////////////////////////////////
+
+// This script (i) counts the # of images available over a point, and (ii) indicates the last image's date
+// Last update: 27 Jan. 2020
+
+////////////////////////////////////////////////////////////////////////////////////////////////
+ 
+var pt = ee.Geometry.Point([-90.7419, 14.4651]).buffer(250); // <- ** SPECIFY LOCATION HERE **
+
+////////////////////////////////////////////////////////////////////////////////////////////////
+
+var r = require('users/servirbz/packages:img_recent'); // imports the img_recent package
+
+////////////////////////////////////////////////////////////////////////////////////////////////
+
+// counts imagery and displays date of most recent acquisition for the following datasets
+
+// Optical datasets
+
+r.most_recent("ASTER", r.aster, pt);
+r.most_recent("Hyperion", r.hyperion, pt);
+r.most_recent("Landsat-4 t1", r.l4_1, pt);
+r.most_recent("Landsat-4 t2", r.l4_2, pt);
+r.most_recent("Landsat-5 t1", r.l5_1, pt);
+r.most_recent("Landsat-5 t2", r.l5_2, pt);
+r.most_recent("Landsat-7 RT", r.l7_0, pt);
+r.most_recent("Landsat-8 RT", r.l8_0, pt);
+r.most_recent("MODIS-Terra", r.mod09, pt);
+r.most_recent("MODIS-Aqua", r.myd09, pt);
+r.most_recent("MCD43A4", r.mcd43a4, pt);
+r.most_recent("VIIRS", r.viirs, pt);
+r.most_recent("PROBA-V 100m", r.proba100, pt);
+r.most_recent("PROBA-V 333m", r.proba333, pt);
+r.most_recent("Sentinel-3", r.s3, pt);
+
+r.most_recent("Sentinel-2", r.s2, pt); // S2 product is S2_SR
+
+// Radar datasets
+
+r.most_recent("ALOS PALSAR", r.palsar, pt);
+r.most_recent("S1 ascending", r.s1_asc, pt);
+r.most_recent("S1 descending", r.s1_dsc, pt);
+
+////////////////////////////////////////////////////////////////////////////////////
+
+// For reference, display the point for which imagery is being queried
+
+Map.addLayer(pt, {color: 'green'},'Specified location', true); // display point over Belize City
+Map.centerObject(pt, 13); // zooms to level 12
+Map.setOptions('SATELLITE');
+
+/////////////////////////////////////// END /////////////////////////////////////////

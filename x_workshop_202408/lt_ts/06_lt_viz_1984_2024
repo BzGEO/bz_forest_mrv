@@ -1,0 +1,35 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var img1 = ee.Image("projects/bz-sdg/x_tmp/lt_defor/bz_defor_lt_nbr_1984_2024_0621_030m"),
+    img2 = ee.Image("projects/bz-sdg/x_tmp/lt_defor/bz_defor_lt_nbr_1984_2024_0808_030m");
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+// 
+// Last updated: 08.08.2024
+
+var a = require('users/bzgeo/examples:_ancillary/mes');
+
+var roi = ee.Geometry.Rectangle(-87.70, 15.73, -89.30, 18.60); 
+var msk_wtr = ee.Image('UMD/hansen/global_forest_change_2015').select('datamask').eq(1);
+
+var chg1 = img1.select('yod').updateMask(msk_wtr);
+var chg2 = img2.select('yod').updateMask(msk_wtr);
+
+var chg_2024 = chg1.updateMask(chg1.select('yod').eq(2024));
+var chg_2020s = chg1.updateMask(chg1.select('yod').gte(2019));
+
+var viz = {min: 1984,  max: 2024,  palette: ['#9400D3', '#4B0082', '#0000FF', '#00FF00', '#FFFF00', '#FF7F00', '#FF0000']};
+
+//
+Map.addLayer(chg2, viz, 'LCC, 1984-2024 (MMU = 2)', 0);
+Map.addLayer(chg1, viz, 'LCC, 1984-2024', 1);
+
+Map.addLayer(chg_2024, {palette: 'red'}, 'LCC, 2024', 0);
+
+Map.addLayer(chg_2020s, {min: 2019, max: 2024, palette: ['orange', 'red']}, 'LCC, 2019-2024', 0);
+
+//
+Map.addLayer(a.pa_bz_ln2, {palette: "darkgreen"}, "Prot. areas", 1);
+Map.addLayer(a.bz_dist_ln2, {palette: "white"}, "Districts", 1);
+Map.addLayer(a.bnds_intl_cam_ln2.clip(a.roi_bz), {palette: "white"},"Int'l boundaries", 1);
+
+Map.centerObject(roi, 9);
+Map.setCenter(-88.4693, 17.1869, 9);

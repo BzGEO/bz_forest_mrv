@@ -1,0 +1,32 @@
+// Loads plot locations and mangrove cover data used for stratification
+// Last updated: 20.03.2024
+
+// Set up Belize ROI
+var roi = ee.Geometry.Rectangle(-87.70, 15.73, -89.30, 18.60);
+
+// Load land cover data for stratification (mangrove, non-mangrove, water)
+// "projects/bz-sdg/x_tmp/bz_redd/bz_mangrove_cover_2018_2020__030m"
+// 1 = water; 2 = non-mangrove; 3 = mangrove
+var lc = ee.Image("projects/bz-sdg/x_tmp/bz_redd/bz_mangrove_cover_2018_2020__030m");
+
+// Load plot data for stratification
+var plots_1_pts = ee.FeatureCollection("projects/bz-sdg/x_tmp/bz_redd/bz_plots_01_orig_pts");
+var plots_1_boxes = ee.FeatureCollection("projects/bz-sdg/x_tmp/bz_redd/bz_plots_02a_90m_orig_boxes");
+var plots_2_pts = ee.FeatureCollection("projects/bz-sdg/x_tmp/bz_redd/bz_plots_02c_90m_realigned_pts");
+var plots_2_boxes = ee.FeatureCollection("projects/bz-sdg/x_tmp/bz_redd/bz_plots_02b_90m_realigned_boxes");
+
+// Generate outlines of plot boundaries
+var plots_1_boxes_ln = ee.Image().byte().paint({featureCollection:plots_1_boxes,width:1});
+var plots_2_boxes_ln = ee.Image().byte().paint({featureCollection:plots_2_boxes,width:1});
+
+// Load data in map viewer below
+//Map.centerObject(roi, 8);
+Map.setCenter(-88.2285, 17.50015, 13);
+Map.setOptions('SATELLITE');
+
+Map.addLayer(lc,{min: 1,  max: 3,  palette: ['blue', 'silver','lime']}, "Mangrove cover", true);
+Map.addLayer(plots_2_boxes_ln, {palette: ['red']}, '2024 mangrove validation plots (v2), outlines', true);
+Map.addLayer(plots_2_pts, {}, '2024 mangrove validation plots (v2)', false);
+Map.addLayer(plots_1_boxes_ln, {palette: ['black']}, '2024 mangrove validation plots (v1), outlines', false);
+Map.addLayer(plots_1_pts, {},'2024 mangrove validation plots (v1)', false);
+

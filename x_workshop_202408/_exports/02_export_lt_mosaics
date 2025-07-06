@@ -1,0 +1,49 @@
+// Export Landsat image mosaics to Google Drive
+// Last updated: 15.08.2024
+
+var a = require('users/servirbz/packages:img_list_landsat_sma_fc__bz'); // Loads LandTrendr-generated mosaics of BZ from 1984-2024
+var b = require('users/servirbz/packages:sma_std3');
+var c = require('users/servirbz/packages:img_optical_landsat_mosaic_bz');
+
+
+var roi = ee.FeatureCollection(ee.Geometry.Rectangle(-76.1, 6.5, -92.5, 21.65)).geometry().buffer(300);
+
+var lt_2023 = a.img_raw[2023];
+var lt_2024 = a.img_raw[2024];
+
+var lt_2023_sma = b.sma4(lt_2023);
+var lt_2024_sma = b.sma4(lt_2024);
+
+
+var lst_2023 = c.lst_l8_l9("2023-01-01","2023-06-01");
+var lst_2024 = c.lst_l8_l9("2024-01-01","2024-06-01");
+
+
+
+var img_2023 = ee.Image.cat([lt_2023,lt_2023_sma,lst_2023]);
+var img_2024 = ee.Image.cat([lt_2024,lt_2024_sma,lst_2024]);
+
+//print(img_2023);
+
+
+Export.image.toDrive({'image': lt_2023.toInt16(), 'region': lt_2023.geometry().bounds(), 'scale': 100,
+        'description': 'export_lt_2023_100m', 'folder': 'x_tmp_gee_outputs',
+        'fileNamePrefix': 'bz_landsat_2023_utm_100m', 'crs': 'EPSG:32616', 'maxPixels': 1e13});
+
+Export.image.toDrive({'image': lt_2024.toInt16(), 'region': lt_2024.geometry().bounds(), 'scale': 100,
+        'description': 'export_lt_2024_100m', 'folder': 'x_tmp_gee_outputs',
+        'fileNamePrefix': 'bz_landsat_2024_utm_100m', 'crs': 'EPSG:32616', 'maxPixels': 1e13});
+        
+        
+// Export to EE asset space
+Export.image.toAsset({image: img_2023.toInt16(),  description: 'export_ee_lt_2023',
+  assetId: 'projects/bz-sdg/compil_imagery/optical/landsat_ft/bz_landsat_boa_fitted_ext_2023_030m',
+  scale: 30,  region: img_2023.geometry().bounds(),  maxPixels: 1e13});
+  
+Export.image.toAsset({image: img_2024.toInt16(),  description: 'export_ee_lt_2024',
+  assetId: 'projects/bz-sdg/compil_imagery/optical/landsat_ft/bz_landsat_boa_fitted_ext_2024_030m',
+  scale: 30,  region: img_2024.geometry().bounds(),  maxPixels: 1e13});
+  
+  
+var l2023 = ee.Image("projects/bz-sdg/compil_imagery/optical/landsat_ft/bz_landsat_boa_fitted_ext_2023_030m");
+var l2024 = ee.Image("projects/bz-sdg/compil_imagery/optical/landsat_ft/bz_landsat_boa_fitted_ext_2024_030m");

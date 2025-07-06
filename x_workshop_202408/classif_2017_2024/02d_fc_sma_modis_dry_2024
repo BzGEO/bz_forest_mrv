@@ -1,0 +1,145 @@
+// Extract forest cover data for Belize for 2023 and 2024 using Spectral Mixture Analysis (SMA) 
+// Orig.: https://code.earthengine.google.com/?scriptPath=users%2Fbzgeo%2Fbz_lcc%3A2d_classif_2023%2F_ui%2Fbz_l9_07_20230521
+// Questions? Contact eac0021@uah.edu or emil.cherrington@nasa.gov
+// Last updated: 01.08.2024
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Load requisite packages
+var a = require('users/bzgeo/examples:_ancillary/mes'); // Loads various ancillary datasets
+var b = require('users/servirbz/packages:sma_std3'); // Loads functions for classifying imagery based on SMA
+var c = require('users/servirbz/packages:img_list_landsat_sma_fc__bz'); // Loads LandTrendr-generated mosaics of BZ from 1984-2024
+var d = require('users/servirbz/packages:mcd43a4_glob1'); // import MODIS imagery
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Define regions of interest (ROIs) -> interchangeable w/ areas of interest (AOIs)
+var roi = ee.Geometry.Polygon([[[-87.68, 19.289437],[-87.68, 15.585054],[-89.991352, 15.585054],[-89.991352, 19.289437]]]); // BZ bounding box ROI
+var roi2 = ee.FeatureCollection("users/servirbz/aoi/lac/cam/bz/bz_bounds_swbd00"); // Belize shapefile ROI
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Load MODIS data
+
+var mcd43_2024a = d.mod43.filterDate('2024-03-09','2024-05-31').median().reproject('EPSG:32616', null, 500).clip(roi);
+
+var mcd43_202405 = d.mod43.filterDate('2024-05-09','2024-05-31').median().reproject('EPSG:32616', null, 500).clip(roi);
+var mcd43_202404 = d.mod43.filterDate('2024-04-09','2024-04-23').median().reproject('EPSG:32616', null, 500).clip(roi);
+var mcd43_202403 = d.mod43.filterDate('2024-03-09','2024-03-24').median().reproject('EPSG:32616', null, 500).clip(roi);
+
+var mcd43_2024b = mcd43_202403.blend(mcd43_202404).blend(mcd43_202405);
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Estimate forest area and % forest cover
+
+// Define function for extracting forest cover statistics and printing those statistics in the Console on the right ->
+
+function fstat(img,res,aoi,year) {
+// NOTE: For this function to work, we need to supply the forest cover map, the spatial resolution, AOI, and the analysis year.
+
+// Extract area for use in % forest cover calculations below
+var area_bz = ee.Number(ee.FeatureCollection(roi2).geometry().area().divide(1000000)); // Area of Belize = 22,230 km2
+
+// Extract forest area
+var f_stat = ee.Number(img.clip(aoi).select('constant').eq(1).multiply(ee.Image.pixelArea()).reduceRegion({
+  geometry: aoi.geometry(), reducer: ee.Reducer.sum(), scale: res, maxPixels: 1e18}).get('constant')).divide(1000000);
+
+// Extract non-forest area
+var nf_stat = ee.Number(img.clip(aoi).select('constant').eq(0).multiply(ee.Image.pixelArea()).reduceRegion({
+  geometry: aoi.geometry(), reducer: ee.Reducer.sum(), scale: res, maxPixels: 1e18}).get('constant')).divide(1000000);
+
+// Select which statistics are printed out
+print('Year: ', year); // This prints the analysis year (defined by the operator)
+print('est. forest area: ', f_stat, 'sq. km'); // This prints the forest cover extent in square kilometers
+print('est. % forest cover: ', f_stat.divide(area_bz).multiply(100),'percent'); // This prints the forest cover extent in percent
+//print('est. % non-forest cover: ', nf_stat.divide(roi).multiply(100),'percent'); // This prints the non-forest cover extent in percent
+}
+
+/////
+
+print("SMA 50%, v1");
+
+// Extract forest cover statistics for 2024 using previously defined function
+fstat(b.for_sma_50(b.sma_(mcd43_2024a)).reproject({crs: 'EPSG: 32616', scale: 100})
+                   .reduceResolution({reducer: ee.Reducer.mode(), maxPixels: 10000, bestEffort: true}),
+                   100, roi2, 2024);
+
+print("SMA 50%, v2");
+
+// Extract forest cover statistics for 2024 using previously defined function
+fstat(b.for_sma_50(b.sma_(mcd43_2024b)).reproject({crs: 'EPSG: 32616', scale: 100})
+                   .reduceResolution({reducer: ee.Reducer.mode(), maxPixels: 10000, bestEffort: true}),
+                   100, roi2, 2024);
+
+print("SMA 60%, v2");
+
+// Extract forest cover statistics for 2024 using previously defined function
+fstat(b.for_sma_60(b.sma_(mcd43_2024b)).reproject({crs: 'EPSG: 32616', scale: 100})
+                   .reduceResolution({reducer: ee.Reducer.mode(), maxPixels: 10000, bestEffort: true}),
+                   100, roi2, 2024);
+                   
+print("SMA 70%, v2");
+
+// Extract forest cover statistics for 2024 using previously defined function
+fstat(b.for_sma_70(b.sma_(mcd43_2024b)).reproject({crs: 'EPSG: 32616', scale: 100})
+                   .reduceResolution({reducer: ee.Reducer.mode(), maxPixels: 10000, bestEffort: true}),
+                   100, roi2, 2024);
+
+/* PLEASE NOTE that in these examples, we are using a 70% photosynthetic vegetation threshold to estimate forest cover.
+However, we can adjust the threshold up or down, e.g. with b.for_sma_50 or b.for_sma_60.
+This is based on the following package that this script is referencing:
+
+https://code.earthengine.google.com/?scriptPath=users%2Fservirbz%2Fpackages%3Asma_std3
+*/
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Define parameters for visualizing the data in the map viewer below
+
+// MODIS visualization palette
+var viz_mcd43 = {bands: ['b6', 'b4', 'b3'], min: [730, 1800, -740], max:[2200, 3800, 2000]};
+
+// Forest cover palette (two colors)
+var pal_fc = {min:0,max:1,palette:['salmon','green']};
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Add data to map viewer
+Map.setCenter(-88.1433, 17.3638, 8); // Centers the data on Belize, at zoom level 9
+
+
+// Load MODIS MCD43A4 data (2024)
+Map.addLayer(mcd43_202403, viz_mcd43, 'MCD43A4_202403', false);
+Map.addLayer(mcd43_202404, viz_mcd43, 'MCD43A4_202404', false);
+Map.addLayer(mcd43_202405, viz_mcd43, 'MCD43A4_202405', false);
+
+Map.addLayer(mcd43_2024a, viz_mcd43, 'MCD43A4_2024a', false);
+Map.addLayer(b.sma_(mcd43_2024a),{}, 'MCD43A4_2024a_SMA', true);
+Map.addLayer(b.for_sma_50(b.sma_(mcd43_2024a)), pal_fc, 'MCD43A4_2024a_SMA_FC_50%', false);
+Map.addLayer(b.for_sma_60(b.sma_(mcd43_2024a)), pal_fc, 'MCD43A4_2024a_SMA_FC_60%', false);
+Map.addLayer(b.for_sma_70(b.sma_(mcd43_2024a)), pal_fc, 'MCD43A4_2024a_SMA_FC_70%', false);
+
+Map.addLayer(mcd43_2024b, viz_mcd43, 'MCD43A4_2024', false);
+Map.addLayer(b.sma_(mcd43_2024b),{}, 'MCD43A4_2024_SMA', true);
+Map.addLayer(b.for_sma_50(b.sma_(mcd43_2024b)), pal_fc, 'MCD43A4_2024b_SMA_FC_50%', false);
+Map.addLayer(b.for_sma_60(b.sma_(mcd43_2024b)), pal_fc, 'MCD43A4_2024b_SMA_FC_60%', false);
+Map.addLayer(b.for_sma_70(b.sma_(mcd43_2024b)), pal_fc, 'MCD43A4_2024b_SMA_FC_70%', false);
+
+// Load ancillary reference datasets
+Map.addLayer(a.bz_ws_ln.clip(roi),{palette: "blue"},"Watersheds (mainland)", false);
+Map.addLayer(a.bz_dist_ln2.clip(roi),{palette: "white"},"District boundaries", false);
+Map.addLayer(a.pa_bz_ln.clip(roi),{palette: "yellow"},"Prot. areas", true);
+Map.addLayer(a.bnds_intl_ln2.clip(roi),{palette: "white"},"Int'l boundaries", true);
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Export data to Google Drive
+
+/*
+Export.image.toDrive({'image': l9_20230608, 'region': roi, 'scale': 30, 'description': 'export_l9_20230608',
+    'folder': 'x_tmp_gee_outputs', 'fileNamePrefix': 'bz_L9_2023-06-08_030m', 'crs': 'EPSG:32616', 'maxPixels': 1e13});
+
+*/
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

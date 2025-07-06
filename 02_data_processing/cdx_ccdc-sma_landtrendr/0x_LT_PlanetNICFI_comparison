@@ -1,0 +1,77 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var bz_bmp_mpr = 
+    /* color: #ff1806 */
+    /* shown: false */
+    ee.Geometry.Polygon(
+        [[[-89.05862015218591, 17.278416007090847],
+          [-89.05862015218591, 16.845176431155156],
+          [-88.73109024495935, 16.845176431155156],
+          [-88.73109024495935, 17.278416007090847]]], null, false),
+    High = ee.Image("projects/servir-sco-assets/assets/SCO_CA/BZ_MRV/LandTrendr_BZ/CentralAmerica_HighThreshold_DrySeason_19842023_NBR"),
+    Low = ee.Image("projects/servir-sco-assets/assets/SCO_CA/BZ_MRV/LandTrendr_BZ/CentralAmerica_LowThreshold_DrySeason_19842023_NBR"),
+    Neutral = ee.Image("projects/servir-sco-assets/assets/SCO_CA/BZ_MRV/LandTrendr_BZ/CentralAmerica_NeutralThreshold_DrySeason_19842023_NBR");
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// set visualization parameters
+//var pal_ps_vis = {"bands":["R","G","B"],"min":64,"max":5454,"gamma":1.8};
+var pal_ps_vis = {min: [-11, 100, -40], max: [700, 950, 800], bands: ['R', 'G', 'B']};
+var pal_lt = ['#9400D3', '#4B0082', '#0000FF', '#00FF00', '#FFFF00', '#FF7F00', '#FF0000'];
+var yodVizParms = {min: 1984, max: 2023, palette: pal_lt};
+var magVizParms = {min: 200, max: 800, palette: pal_lt};
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Adding Planet NICFI data to confirm disturbances | Filter basemaps by date and get the first image from filtered results
+var nicfi = ee.ImageCollection("projects/planet-nicfi/assets/basemaps/americas");
+
+// Filter basemaps by date and get the first image from filtered results
+var basemap2018 = nicfi.filter(ee.Filter.date('2018-01-01','2018-07-31')).filterBounds(bz_bmp_mpr).median();
+var basemap2019 = nicfi.filter(ee.Filter.date('2019-01-01','2019-07-01')).filterBounds(bz_bmp_mpr).median();
+var basemap2020 = nicfi.filter(ee.Filter.date('2020-01-01','2020-07-01')).filterBounds(bz_bmp_mpr).median();
+var basemap2021 = nicfi.filter(ee.Filter.date('2021-01-01','2021-07-01')).filterBounds(bz_bmp_mpr).median();
+var basemap2022 = nicfi.filter(ee.Filter.date('2022-01-01','2022-07-01')).filterBounds(bz_bmp_mpr).median();
+var basemap2023 = nicfi.filter(ee.Filter.date('2023-01-01','2023-07-01')).filterBounds(bz_bmp_mpr).median();
+
+/*
+var basemap2018 = ee.Image("projects/sica/compil_imagenes/opticas/planet/gt_nacional/gt_planetscope_q2018_05");
+var basemap2019 = ee.Image("projects/sica/compil_imagenes/opticas/planet/gt_nacional/gt_planetscope_q2019_05");
+var basemap2020 = ee.Image("projects/sica/compil_imagenes/opticas/planet/gt_nacional/gt_planetscope_q2020_05");
+var basemap2021 = ee.Image("projects/sica/compil_imagenes/opticas/planet/gt_nacional/gt_planetscope_2021_03");
+var basemap2022 = ee.Image("projects/sica/compil_imagenes/opticas/planet/gt_nacional/gt_planetscope_2022_03");
+var basemap2023 = ee.Image("projects/sica/compil_imagenes/opticas/planet/gt_nacional/gt_planetscope_2023_01");
+*/
+
+Map.addLayer(basemap2018.clip(bz_bmp_mpr), pal_ps_vis, '2018 mosaic', 1); // true = 1; false = 0
+Map.addLayer(basemap2019.clip(bz_bmp_mpr), pal_ps_vis, '2019 mosaic', 0);
+Map.addLayer(basemap2020.clip(bz_bmp_mpr), pal_ps_vis, '2020 mosaic', 0);
+Map.addLayer(basemap2021.clip(bz_bmp_mpr), pal_ps_vis, '2021 mosaic', 0);
+Map.addLayer(basemap2022.clip(bz_bmp_mpr), pal_ps_vis, '2022 mosaic', 1);
+Map.addLayer(basemap2023.clip(bz_bmp_mpr), pal_ps_vis, '2023 mosaic', 1);
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Extract disturbance data by year
+var Disturbance2019masked = High.updateMask(High.select('yod').eq(2019));
+var Disturbance2020masked = High.updateMask(High.select('yod').eq(2020));
+var Disturbance2021masked = High.updateMask(High.select('yod').eq(2021));
+var Disturbance2022masked = High.updateMask(High.select('yod').eq(2022));
+var Disturbance2023masked = High.updateMask(High.select('yod').eq(2023));
+
+// Add disturbance maps to viewer
+Map.addLayer(Disturbance2019masked.select('yod').clip(bz_bmp_mpr), {palette: ['red']}, 'Disturbance 2019', 1); // true = 1; false = 0
+Map.addLayer(Disturbance2020masked.select('yod').clip(bz_bmp_mpr), {palette: ['purple']}, 'Disturbance 2020', 1);
+Map.addLayer(Disturbance2021masked.select('yod').clip(bz_bmp_mpr), {palette: ['blue']}, 'Disturbance 2021', 1);
+Map.addLayer(Disturbance2022masked.select('yod').clip(bz_bmp_mpr), {palette: ['orange']}, 'Disturbance 2022', 1);
+Map.addLayer(Disturbance2023masked.select('yod').clip(bz_bmp_mpr), {palette: ['pink']}, 'Disturbance 2023', 1);
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+var aoi = ee.Image().byte().paint({featureCollection:bz_bmp_mpr,width:2});
+var outline = ee.Image().byte().paint({featureCollection:bz_bmp_mpr,width:2});
+Map.addLayer(outline, {palette: ["yellow"]}, "Mountain Pine Ridge", 1); // true = 1; false = 0
+Map.addLayer(aoi, {palette: ["black"]}, "MPR", 1);
+Map.centerObject(bz_bmp_mpr, 15);
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
