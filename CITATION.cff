@@ -2,8 +2,17 @@ cff-version: 1.2.0
 message: "If you use this software, please cite it as below."
 authors:
 - family-names: "Cherrington"
-  given-names: "Emil"
+  given-names: "Emil A."
   orcid: "https://orcid.org/0000-0003-0524-4744"
+- family-names: "Hernandez Sandoval"
+  given-names: "Betzy E."
+  orcid: "https://orcid.org/0000-0002-9669-3504"
+- family-names: "Evans"
+  given-names: "Christine A."
+  orcid: "https://orcid.org/0000-0002-8813-5748"
+- family-names: "Carey"
+  given-names: "Lauren E."
+  orcid: "https://orcid.org/0009-0000-8147-3587"
 title: "Belize forest Monitoring, Reporting, and Verification (MRV)"
 version: 1.0.0.1
 doi: 10.5281/zenodo.15825423
