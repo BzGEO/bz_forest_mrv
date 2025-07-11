@@ -13,7 +13,7 @@ authors:
 - family-names: "Carey"
   given-names: "Lauren E."
   orcid: "https://orcid.org/0009-0000-8147-3587"
-title: "Belize forest Monitoring, Reporting, and Verification (MRV)"
+title: "Belize forest Monitoring, Reporting, and Verification (MRV) scripts for Earth Engine"
 version: 1.0.0.1
 doi: 10.5281/zenodo.15825423
 date-released: 2025-07-06
