@@ -15,6 +15,6 @@ authors:
   orcid: "https://orcid.org/0009-0000-8147-3587"
 title: "Belize forest Monitoring, Reporting, and Verification (MRV) scripts for Earth Engine"
 version: 1.0.0.1
-doi: 10.5281/zenodo.15825423
+doi: 10.5281/zenodo.15859041
 date-released: 2025-07-06
 url: "https://github.com/bzgeo/bz_forest_mrv"
